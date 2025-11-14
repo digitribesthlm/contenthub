@@ -104,4 +104,43 @@ This section provides the schemas and workflow logic for the backend.
 | `brief` | String | The original content brief provided by the user. **Required.** |
 | `content` | String | The main body of the content, which can be edited. **Required.** |
 | `status` | String | The current status of the brief. Can be 'Draft', 'Published', or 'Scheduled'. **Required.** |
-| `contentType` | String | The type
+| `contentType` | String | The type of content. Can be 'Blog', 'News', or 'Page'. **Required.** |
+| `heroImageUrl`| String | (Optional) URL of the generated hero image. |
+| `createdAt` | ISODate | The timestamp when the brief was created. **Required.** |
+| `scheduledAt` | ISODate | (Optional) The timestamp when the content is scheduled to be published. |
+
+---
+
+### N8N Workflow Logic
+
+#### Webhook 1: New Content Brief Creation (`/webhook/new-brief`)
+
+-   **Trigger:** `POST` request.
+-   **Expected Body:** `{ "title": "...", "brief": "...", "domainId": "..." }`
+-   **Logic:**
+    1.  Receive the webhook.
+    2.  (Optional) Use a Gemini node to generate an initial paragraph of content from the `brief`.
+    3.  Use a MongoDB node to **insert** a new document into the `content_briefs` collection with a default `status` of "Draft".
+    4.  Respond to the webhook with the full document created in MongoDB.
+
+#### Webhook 2: Content Publishing (`/webhook/publish`)
+
+-   **Trigger:** `POST` request.
+-   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "contentType": "..." }`
+-   **Logic:**
+    1.  Receive the webhook.
+    2.  Use a MongoDB node to **update** the status of the corresponding brief to "Published".
+    3.  Use a WordPress, Ghost, or HTTP Request node to send the content to your CMS for immediate publication.
+    4.  Respond with a success message.
+
+#### Webhook 3: Content Scheduling (`/webhook/schedule`)
+
+-   **Trigger:** `POST` request.
+-   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "contentType": "...", "scheduledAt": "..." }`
+-   **Logic:**
+    1.  Receive the webhook.
+    2.  Use a MongoDB node to **update** the brief's `status` to "Scheduled" and set the `scheduledAt` timestamp.
+    3.  The workflow should then either use a "Wait" node or be part of a separate cron-triggered workflow that queries for posts where `scheduledAt` is in the past and `status` is "Scheduled".
+    4.  Once the time is reached, publish the content using the same logic as the "Publish" webhook.
+    5.  After successful publication, update the brief's `status` in MongoDB to "Published".
+    6.  Respond immediately to the initial webhook call with a success message.
