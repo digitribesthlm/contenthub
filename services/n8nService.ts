@@ -1,13 +1,35 @@
 import { ContentBrief } from '../types';
 import { N8N_WEBHOOK_NEW_BRIEF, N8N_WEBHOOK_PUBLISH, N8N_WEBHOOK_SCHEDULE } from '../constants';
 
+// Generate a unique content brief ID (format: w23434ksdfkdsfksdfsdf)
+const generateContentBriefId = (): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < 20; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
+};
+
 // Calls an n8n webhook to create a new content brief record
 export const submitBrief = async (brief: string, title: string, domainId: string, clientId: string): Promise<ContentBrief> => {
-  const payload = { title, brief, domainId, clientId };
+  const contentBriefId = generateContentBriefId();
+  
+  const payload = { 
+    id: contentBriefId,
+    title, 
+    brief, 
+    domainId, 
+    clientId,
+    createdAt: new Date().toISOString(),
+    status: 'Draft',
+    contentType: 'Blog',
+  };
 
   console.log('\n' + '='.repeat(60));
   console.log('📤 SUBMITTING NEW BRIEF TO N8N');
   console.log('='.repeat(60));
+  console.log('Content Brief ID:', contentBriefId);
   console.log('Webhook URL:', N8N_WEBHOOK_NEW_BRIEF);
   console.log('Payload:', payload);
 
@@ -33,8 +55,23 @@ export const submitBrief = async (brief: string, title: string, domainId: string
     
     const result = await response.json();
     console.log('✅ Brief created:', result);
+    
+    // Ensure we use the custom contentBriefId, not MongoDB _id
+    const briefData: ContentBrief = {
+      id: contentBriefId, // Use our unique ID, not the MongoDB _id
+      title: result.title || payload.title,
+      brief: result.brief || payload.brief,
+      domainId: result.domainId || payload.domainId,
+      clientId: result.clientId || payload.clientId,
+      content: result.content || '',
+      status: result.status || 'Draft',
+      contentType: result.contentType || 'Blog',
+      createdAt: result.createdAt || new Date().toISOString(),
+    };
+    
+    console.log('Final brief object:', briefData);
     console.log('='.repeat(60) + '\n');
-    return result;
+    return briefData;
   } catch (error) {
     console.error('❌ Failed to submit brief to n8n:', error);
     console.log('='.repeat(60) + '\n');

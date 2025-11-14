@@ -114,11 +114,23 @@ app.get('/api/client/:clientId', async (req, res) => {
     // Keep clientId as STRING - stored as string in database
     const queryClientId = clientId;
 
-    const [domains, brandGuides, briefs] = await Promise.all([
+    const [domains, brandGuidesRaw, briefs] = await Promise.all([
       db.collection(MONGODB_COLLECTION_DOMAINS).find({ clientId: queryClientId }).toArray(),
       db.collection(MONGODB_COLLECTION_BRAND_GUIDES).find({ clientId: queryClientId }).toArray(),
       db.collection(MONGODB_COLLECTION_CONTENT_BRIEFS).find({ clientId: queryClientId }).sort({ createdAt: -1 }).toArray(),
     ]);
+
+    // Debug: Check what fields are in the brand guides
+    if (brandGuidesRaw.length > 0) {
+      console.log('First brand guide fields:', Object.keys(brandGuidesRaw[0]));
+      console.log('First brand guide data:', {
+        domainId: brandGuidesRaw[0].domainId,
+        styleImageData: brandGuidesRaw[0].styleImageData ? `exists (${brandGuidesRaw[0].styleImageData.substring(0, 30)}...)` : 'missing',
+        styleImageMimeType: brandGuidesRaw[0].styleImageMimeType,
+      });
+    }
+    
+    const brandGuides = brandGuidesRaw;
 
     // Fix briefs without domainId - assign them to the first available domain or extract from brand guides
     const briefsWithDomain = briefs.map(brief => {
@@ -156,13 +168,34 @@ app.get('/api/client/:clientId', async (req, res) => {
       success: true,
       data: {
         domains: domainsData,
-        brandGuides: brandGuides.map(bg => ({
-          id: bg._id.toString(),
-          domainId: bg.domainId,
-          stylePrompt: bg.stylePrompt,
-          toneOfVoice: bg.toneOfVoice,
-          styleImageUrl: bg.styleImageUrl,
-        })),
+        brandGuides: brandGuides.map(bg => {
+          // Reconstruct data URL from saved image data (prioritize saved data over old URL)
+          console.log('Brand Guide fields:', {
+            domainId: bg.domainId,
+            hasStyleImageData: !!bg.styleImageData,
+            styleImageDataLength: bg.styleImageData ? bg.styleImageData.length : 0,
+            styleImageMimeType: bg.styleImageMimeType,
+          });
+          
+          let styleImageUrl = bg.styleImageUrl;
+          if (bg.styleImageData && bg.styleImageData.length > 0) {
+            const mimeType = bg.styleImageMimeType || 'image/jpeg';
+            styleImageUrl = `data:${mimeType};base64,${bg.styleImageData}`;
+            console.log(`✓ Reconstructed data URL for: ${bg.domainId}`);
+          } else {
+            console.log(`ℹ Using original URL for: ${bg.domainId}`);
+          }
+          
+          return {
+            id: bg._id.toString(),
+            domainId: bg.domainId,
+            stylePrompt: bg.stylePrompt,
+            toneOfVoice: bg.toneOfVoice,
+            styleImageUrl: styleImageUrl,
+            styleImageData: bg.styleImageData,
+            styleImageMimeType: bg.styleImageMimeType,
+          };
+        }),
         briefs: briefsWithDomain.map(b => ({
           id: b._id.toString(),
           domainId: b.domainId,
@@ -190,18 +223,29 @@ app.post('/api/brand-guide/:brandGuideId/image', async (req, res) => {
     const { brandGuideId } = req.params;
     const { styleImageData, styleImageMimeType } = req.body;
 
+    console.log('\n' + '='.repeat(60));
+    console.log('💾 SAVING BRAND GUIDE IMAGE');
+    console.log('='.repeat(60));
+    console.log('Brand Guide ID:', brandGuideId);
+    console.log('Is valid ObjectId?', ObjectId.isValid(brandGuideId));
+    console.log('Image data received?', !!styleImageData);
+    console.log('Image size:', styleImageData ? styleImageData.length : 0, 'bytes');
+
     if (!ObjectId.isValid(brandGuideId)) {
+      console.log('❌ Invalid ObjectId');
       return res.status(400).json({ error: 'Invalid brandGuideId' });
     }
 
     if (!styleImageData) {
+      console.log('❌ No image data');
       return res.status(400).json({ error: 'Image data is required' });
     }
 
-    console.log(`✓ Saving image for brand guide: ${brandGuideId}`);
+    const objectId = new ObjectId(brandGuideId);
+    console.log('Querying with ObjectId:', objectId.toString());
 
     const result = await db.collection(MONGODB_COLLECTION_BRAND_GUIDES).updateOne(
-      { _id: new ObjectId(brandGuideId) },
+      { _id: objectId },
       {
         $set: {
           styleImageData: styleImageData, // Base64 encoded image
@@ -211,14 +255,45 @@ app.post('/api/brand-guide/:brandGuideId/image', async (req, res) => {
       }
     );
 
+    console.log('Update result:', {
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+      acknowledged: result.acknowledged,
+    });
+
     if (result.matchedCount === 0) {
+      console.log('❌ Brand guide not found');
       return res.status(404).json({ error: 'Brand guide not found' });
     }
 
+    console.log('✅ Image saved successfully');
+    console.log('='.repeat(60) + '\n');
     res.json({ success: true, message: 'Image saved successfully' });
   } catch (error) {
     console.error('❌ Error saving brand guide image:', error.message);
+    console.log('='.repeat(60) + '\n');
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Debug endpoint to check brand guide data
+app.get('/api/debug/brand-guides', async (req, res) => {
+  try {
+    const allBrandGuides = await db.collection(MONGODB_COLLECTION_BRAND_GUIDES).find({}).toArray();
+    res.json({
+      total: allBrandGuides.length,
+      guides: allBrandGuides.map(bg => ({
+        id: bg._id.toString(),
+        domainId: bg.domainId,
+        clientId: bg.clientId,
+        hasStyleImageData: !!bg.styleImageData,
+        styleImageDataLength: bg.styleImageData ? bg.styleImageData.length : 0,
+        styleImageMimeType: bg.styleImageMimeType,
+        styleImageUpdatedAt: bg.styleImageUpdatedAt,
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -20,6 +20,10 @@ const BrandGuideEditor: React.FC<BrandGuideEditorProps> = ({ brandGuide, onSave 
     setStylePrompt(brandGuide.stylePrompt);
     setToneOfVoice(brandGuide.toneOfVoice);
     setStyleImageUrl(brandGuide.styleImageUrl);
+    
+    console.log('BrandGuideEditor loaded:');
+    console.log('  styleImageUrl:', brandGuide.styleImageUrl ? `${String(brandGuide.styleImageUrl).substring(0, 50)}...` : 'undefined');
+    console.log('  styleImageData:', brandGuide.styleImageData ? `${brandGuide.styleImageData.substring(0, 50)}...` : 'undefined');
   }, [brandGuide]);
   
   const isDirty = stylePrompt !== brandGuide.stylePrompt || 
