@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Sensitive/temporary files
+info.md
+SECURITY_REPORT.md
+.env.local
+.env*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
