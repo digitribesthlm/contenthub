@@ -1,4 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install --force"
+  "installCommand": "npm install && npm install @rollup/rollup-linux-x64-gnu@4.53.2 --no-save"
 }
