@@ -177,14 +177,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         <div className="flex border-b border-gray-700 mb-4">
             <button 
                 className={`flex-1 flex items-center justify-center p-3 text-sm font-medium transition-colors ${activeView === 'content' ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => setActiveView('content')}
+                onClick={() => {
+                  setActiveView('content');
+                  setShowSidebar(false);
+                }}
             >
                 <DocumentTextIcon className="w-5 h-5 mr-2" />
                 Content
             </button>
             <button 
                 className={`flex-1 flex items-center justify-center p-3 text-sm font-medium transition-colors ${activeView === 'brand' ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => setActiveView('brand')}
+                onClick={() => {
+                  setActiveView('brand');
+                  setShowSidebar(false);
+                }}
             >
                 <PaintBrushIcon className="w-5 h-5 mr-2" />
                 Brand Guide
