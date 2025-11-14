@@ -68,58 +68,23 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log('\n' + '='.repeat(60));
-    console.log('🔐 LOGIN ATTEMPT - DEBUG INFO');
-    console.log('='.repeat(60));
-    console.log('📧 Email received:', email);
-    console.log('🔑 Password received:', password);
-    console.log('🔢 Password length:', password.length);
-
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
 
-    // Show ALL users in database
-    console.log('\n📋 ALL USERS IN DATABASE:');
-    console.log('   Collection name:', MONGODB_COLLECTION_USERS);
-    const allUsers = await db.collection(MONGODB_COLLECTION_USERS).find({}).toArray();
-    console.log('   Total users:', allUsers.length);
-    allUsers.forEach((u, idx) => {
-      console.log(`\n  User ${idx + 1}:`);
-      console.log(`    Email: ${u.email}`);
-      console.log(`    Password: ${u.password}`);
-      console.log(`    Password length: ${u.password.length}`);
-      console.log(`    Role: ${u.role}`);
-      console.log(`    ClientId: ${u.clientId}`);
-    });
-
     // Query MongoDB users collection
-    console.log('\n🔍 SEARCHING FOR USER...');
     const user = await db.collection(MONGODB_COLLECTION_USERS).findOne({ email });
 
     if (!user) {
-      console.log('   ✗ User NOT found in database');
-      console.log('='.repeat(60) + '\n');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Simple string comparison
-    console.log('   ✓ User FOUND in database');
-    console.log('\n📦 PASSWORD COMPARISON:');
-    console.log('   Stored in DB:', user.password);
-    console.log('   Sent by user:', password);
-    console.log('   DB length:', user.password.length);
-    console.log('   Sent length:', password.length);
-    console.log('   Exact match:', user.password === password);
-    
     if (user.password !== password) {
-      console.log('\n   ✗ PASSWORDS DO NOT MATCH');
-      console.log('='.repeat(60) + '\n');
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    console.log('\n   ✓ PASSWORDS MATCH - LOGIN SUCCESS!');
-    console.log('='.repeat(60) + '\n');
+    console.log('✅ Login successful for:', email);
     
     res.json({
       success: true,
@@ -141,50 +106,12 @@ app.get('/api/client/:clientId', async (req, res) => {
   try {
     const { clientId } = req.params;
 
-    console.log('\n' + '='.repeat(60));
-    console.log('📦 FETCHING CLIENT DATA');
-    console.log('='.repeat(60));
-    console.log('ClientId received:', clientId);
-    console.log('ClientId type:', typeof clientId);
-
     if (!ObjectId.isValid(clientId)) {
-      console.log('✗ Invalid ObjectId format');
       return res.status(400).json({ error: 'Invalid clientId' });
     }
 
-    // Keep clientId as STRING - your data stores it as a string!
+    // Keep clientId as STRING - stored as string in database
     const queryClientId = clientId;
-    
-    console.log('Query clientId (STRING):', queryClientId);
-    console.log('Query clientId type:', typeof queryClientId);
-
-    console.log('\n🔍 Querying collections:');
-    console.log('   - Domains collection:', MONGODB_COLLECTION_DOMAINS);
-    console.log('   - Brand guides collection:', MONGODB_COLLECTION_BRAND_GUIDES);
-    console.log('   - Content briefs collection:', MONGODB_COLLECTION_CONTENT_BRIEFS);
-
-    // First, let's see what's ACTUALLY in each collection
-    console.log('\n🔎 CHECKING WHAT\'S IN COLLECTIONS...');
-    
-    const allBrandGuides = await db.collection(MONGODB_COLLECTION_BRAND_GUIDES).find({}).toArray();
-    console.log(`   Total brand guides in collection: ${allBrandGuides.length}`);
-    if (allBrandGuides.length > 0) {
-      console.log('   Sample brand guide:');
-      console.log('     clientId:', allBrandGuides[0].clientId, '(type:', typeof allBrandGuides[0].clientId, ')');
-      console.log('     clientId equals queryClientId?', allBrandGuides[0].clientId === queryClientId);
-      console.log('     clientId toString:', String(allBrandGuides[0].clientId));
-    }
-
-    const allBriefs = await db.collection(MONGODB_COLLECTION_CONTENT_BRIEFS).find({}).toArray();
-    console.log(`   Total briefs in collection: ${allBriefs.length}`);
-    if (allBriefs.length > 0) {
-      console.log('   Sample brief:');
-      console.log('     clientId:', allBriefs[0].clientId, '(type:', typeof allBriefs[0].clientId, ')');
-      console.log('     clientId equals queryClientId?', allBriefs[0].clientId === queryClientId);
-      console.log('     clientId toString:', String(allBriefs[0].clientId));
-    }
-
-    console.log('\n🔍 NOW QUERYING WITH clientId:', queryClientId, '(type:', typeof queryClientId, ')');
 
     const [domains, brandGuides, briefs] = await Promise.all([
       db.collection(MONGODB_COLLECTION_DOMAINS).find({ clientId: queryClientId }).toArray(),
@@ -192,15 +119,7 @@ app.get('/api/client/:clientId', async (req, res) => {
       db.collection(MONGODB_COLLECTION_CONTENT_BRIEFS).find({ clientId: queryClientId }).sort({ createdAt: -1 }).toArray(),
     ]);
 
-    console.log('\n✓ Query Results:');
-    console.log(`   Domains found: ${domains.length}`);
-    console.log(`   Brand guides found: ${brandGuides.length}`);
-    console.log(`   Content briefs found: ${briefs.length}`);
-    
-    if (domains.length > 0) {
-      console.log(`   First domain: ${domains[0].name}`);
-    }
-    console.log('='.repeat(60) + '\n');
+    console.log(`✓ Fetched client data - ${domains.length} domains, ${brandGuides.length} guides, ${briefs.length} briefs`);
 
     // Transform domains from brand guides if no domains collection
     const uniqueDomains = new Map();
