@@ -45,13 +45,24 @@ export const submitBrief = async (brief: string, title: string, domainId: string
 // Calls an n8n webhook to publish content
 export const publishContent = async (brief: ContentBrief): Promise<{ success: boolean }> => {
   const payload = {
+    // Core brief data
     id: brief.id,
     title: brief.title,
+    brief: brief.brief,
     content: brief.content,
-    heroImageUrl: brief.heroImageUrl,
-    domainId: brief.domainId,
-    clientId: brief.clientId,
     contentType: brief.contentType,
+    status: brief.status,
+    
+    // Client & domain info
+    clientId: brief.clientId,
+    domainId: brief.domainId,
+    
+    // Image data
+    heroImageUrl: brief.heroImageUrl,
+    heroImageData: brief.heroImageData || null, // Base64 encoded image if generated
+    
+    // Metadata
+    createdAt: brief.createdAt,
   };
 
   console.log('\n' + '='.repeat(60));
@@ -94,14 +105,25 @@ export const publishContent = async (brief: ContentBrief): Promise<{ success: bo
 // Calls an n8n webhook to schedule content
 export const scheduleContent = async (brief: ContentBrief, scheduledAt: string): Promise<{ success: boolean }> => {
   const payload = {
+    // Core brief data
     id: brief.id,
     title: brief.title,
+    brief: brief.brief,
     content: brief.content,
-    heroImageUrl: brief.heroImageUrl,
-    domainId: brief.domainId,
-    clientId: brief.clientId,
     contentType: brief.contentType,
+    status: brief.status,
+    
+    // Client & domain info
+    clientId: brief.clientId,
+    domainId: brief.domainId,
+    
+    // Image data
+    heroImageUrl: brief.heroImageUrl,
+    heroImageData: brief.heroImageData || null, // Base64 encoded image if generated
+    
+    // Scheduling
     scheduledAt,
+    createdAt: brief.createdAt,
   };
 
   console.log('\n' + '='.repeat(60));

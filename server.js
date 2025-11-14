@@ -119,7 +119,20 @@ app.get('/api/client/:clientId', async (req, res) => {
       db.collection(MONGODB_COLLECTION_CONTENT_BRIEFS).find({ clientId: queryClientId }).sort({ createdAt: -1 }).toArray(),
     ]);
 
-    console.log(`✓ Fetched client data - ${domains.length} domains, ${brandGuides.length} guides, ${briefs.length} briefs`);
+    // Fix briefs without domainId - assign them to the first available domain or extract from brand guides
+    const briefsWithDomain = briefs.map(brief => {
+      if (!brief.domainId) {
+        // Try to find a domain for this brief
+        if (domains.length > 0) {
+          brief.domainId = domains[0].id;
+        } else if (brandGuides.length > 0) {
+          brief.domainId = brandGuides[0].domainId;
+        }
+      }
+      return brief;
+    });
+
+    console.log(`✓ Fetched client data - ${domains.length} domains, ${brandGuides.length} guides, ${briefsWithDomain.length} briefs`);
 
     // Transform domains from brand guides if no domains collection
     const uniqueDomains = new Map();
@@ -128,7 +141,7 @@ app.get('/api/client/:clientId', async (req, res) => {
         uniqueDomains.set(bg.domainId, { id: bg.domainId, name: bg.domainId });
       }
     });
-    briefs.forEach(b => {
+    briefsWithDomain.forEach(b => {
       if (b.domainId && !uniqueDomains.has(b.domainId)) {
         uniqueDomains.set(b.domainId, { id: b.domainId, name: b.domainId });
       }
@@ -149,7 +162,7 @@ app.get('/api/client/:clientId', async (req, res) => {
           toneOfVoice: bg.toneOfVoice,
           styleImageUrl: bg.styleImageUrl,
         })),
-        briefs: briefs.map(b => ({
+        briefs: briefsWithDomain.map(b => ({
           id: b._id.toString(),
           domainId: b.domainId,
           title: b.title,
@@ -160,6 +173,7 @@ app.get('/api/client/:clientId', async (req, res) => {
           scheduledAt: b.scheduledAt,
           heroImageUrl: b.heroImageUrl,
           createdAt: b.createdAt,
+          clientId: b.clientId,
         })),
       },
     });

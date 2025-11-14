@@ -35,6 +35,7 @@ export interface ContentBrief {
   contentType: ContentType;
   scheduledAt?: string;
   heroImageUrl?: string;
+  heroImageData?: string; // Base64 encoded image data (if generated)
   createdAt: string;
 }
 

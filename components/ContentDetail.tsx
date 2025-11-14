@@ -45,7 +45,14 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
       const prompt = `Based on the following content, create a hero image. Content: "${brief.content}"`;
       const imageUrl = await generateHeroImage(prompt, brandGuide.stylePrompt, brandGuide.styleImageUrl);
       setHeroImage(imageUrl);
-      onUpdate({ heroImageUrl: imageUrl });
+      
+      // Extract base64 data from data URL for storage
+      const base64Data = imageUrl.includes(',') ? imageUrl.split(',')[1] : imageUrl;
+      
+      onUpdate({ 
+        heroImageUrl: imageUrl,
+        heroImageData: base64Data, // Store base64 for webhook transmission
+      });
     } catch (err) {
       console.error("Image generation failed:", err);
       setError("Failed to generate image. Please try again.");
@@ -61,7 +68,14 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     try {
       const imageUrl = await editHeroImage(heroImage, editPrompt, brandGuide.stylePrompt);
       setHeroImage(imageUrl);
-      onUpdate({ heroImageUrl: imageUrl });
+      
+      // Extract base64 data from data URL for storage
+      const base64Data = imageUrl.includes(',') ? imageUrl.split(',')[1] : imageUrl;
+      
+      onUpdate({ 
+        heroImageUrl: imageUrl,
+        heroImageData: base64Data, // Store base64 for webhook transmission
+      });
       setEditPrompt('');
     } catch (err) {
       console.error("Image editing failed:", err);
@@ -75,7 +89,16 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setIsPublishing(true);
     setError(null);
     try {
-      await n8nPublishContent(brief);
+      // Create complete brief object with all current state
+      const completeBrief: ContentBrief = {
+        ...brief,
+        content: editedContent,
+        contentType,
+        heroImageUrl: heroImage,
+        // heroImageData is already in brief if it was updated
+      };
+      
+      await n8nPublishContent(completeBrief);
       onPublish();
     } catch (err) {
       console.error("Publishing failed:", err);
@@ -90,8 +113,17 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setIsScheduling(true);
     setError(null);
     try {
+      // Create complete brief object with all current state
+      const completeBrief: ContentBrief = {
+        ...brief,
+        content: editedContent,
+        contentType,
+        heroImageUrl: heroImage,
+        // heroImageData is already in brief if it was updated
+      };
+      
       const scheduledAt = new Date(scheduleDate).toISOString();
-      await n8nScheduleContent(brief, scheduledAt);
+      await n8nScheduleContent(completeBrief, scheduledAt);
       onSchedule(scheduledAt);
       setShowScheduler(false);
     } catch(err) {
