@@ -1,0 +1,169 @@
+
+import React, { useState, useMemo, useCallback } from 'react';
+import { ContentBrief, Domain, BrandGuide, Status } from '../types';
+import { MOCK_DOMAINS, MOCK_BRAND_GUIDES, MOCK_CONTENT_BRIEFS } from '../constants';
+import ContentList from './ContentList';
+import ContentDetail from './ContentDetail';
+import ContentForm from './ContentForm';
+import BrandGuideEditor from './BrandGuideEditor';
+import { submitBrief as n8nSubmitBrief } from '../services/n8nService';
+import { LogoutIcon, DocumentTextIcon, PaintBrushIcon } from './Icons';
+
+interface DashboardProps {
+  onLogout: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+  const [briefs, setBriefs] = useState<ContentBrief[]>(MOCK_CONTENT_BRIEFS);
+  const [brandGuides, setBrandGuides] = useState<BrandGuide[]>(MOCK_BRAND_GUIDES);
+  const [selectedDomainId, setSelectedDomainId] = useState<string>(MOCK_DOMAINS[0].id);
+  const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
+
+  const filteredBriefs = useMemo(() => {
+    return briefs
+      .filter(b => b.domainId === selectedDomainId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [briefs, selectedDomainId]);
+  
+  const selectedBrief = useMemo(() => {
+    return briefs.find(b => b.id === selectedBriefId) || null;
+  }, [briefs, selectedBriefId]);
+
+  const brandGuide = useMemo(() => {
+    return brandGuides.find(bg => bg.domainId === selectedDomainId)!;
+  }, [brandGuides, selectedDomainId]);
+  
+  const handleSelectBrief = useCallback((id: string) => {
+    setSelectedBriefId(id);
+    setIsCreating(false);
+  }, []);
+
+  const handleUpdateBrief = useCallback((updatedBrief: Partial<ContentBrief>) => {
+    setBriefs(prevBriefs =>
+      prevBriefs.map(b =>
+        b.id === selectedBriefId ? { ...b, ...updatedBrief } : b
+      )
+    );
+  }, [selectedBriefId]);
+  
+  const handlePublishBrief = useCallback(() => {
+    setBriefs(prevBriefs =>
+      prevBriefs.map(b =>
+        b.id === selectedBriefId ? { ...b, status: Status.Published } : b
+      )
+    );
+  }, [selectedBriefId]);
+  
+  const handleScheduleBrief = useCallback((scheduledAt: string) => {
+      setBriefs(prevBriefs =>
+          prevBriefs.map(b =>
+              b.id === selectedBriefId ? { ...b, status: Status.Scheduled, scheduledAt } : b
+          )
+      );
+  }, [selectedBriefId]);
+
+  const handleNewBrief = async (briefText: string, title: string) => {
+    const newBrief = await n8nSubmitBrief(briefText, title, selectedDomainId);
+    setBriefs(prevBriefs => [newBrief, ...prevBriefs]);
+    setSelectedBriefId(newBrief.id);
+    setIsCreating(false);
+  };
+  
+  const handleSaveBrandGuide = useCallback((updatedGuide: Partial<BrandGuide>) => {
+    setBrandGuides(prevGuides =>
+      prevGuides.map(g =>
+        g.domainId === selectedDomainId ? { ...g, ...updatedGuide } : g
+      )
+    );
+  }, [selectedDomainId]);
+
+  return (
+    <div className="flex h-screen bg-gray-900 text-gray-100">
+      <aside className="w-1/4 max-w-sm bg-gray-800 p-4 flex flex-col border-r border-gray-700">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold text-white">Content Hub</h1>
+          <button onClick={onLogout} className="p-2 rounded-md hover:bg-gray-700 transition-colors" title="Logout">
+              <LogoutIcon className="w-5 h-5 text-gray-400" />
+          </button>
+        </div>
+        <div className="mb-4">
+          <label htmlFor="domain-select" className="block text-sm font-medium text-gray-400 mb-1">Domain</label>
+          <select
+            id="domain-select"
+            className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            value={selectedDomainId}
+            onChange={e => {
+              setSelectedDomainId(e.target.value);
+              setSelectedBriefId(null);
+              setIsCreating(false);
+            }}
+          >
+            {MOCK_DOMAINS.map(domain => (
+              <option key={domain.id} value={domain.id}>{domain.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex border-b border-gray-700 mb-4">
+            <button 
+                className={`flex-1 flex items-center justify-center p-3 text-sm font-medium transition-colors ${activeView === 'content' ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400 hover:text-white'}`}
+                onClick={() => setActiveView('content')}
+            >
+                <DocumentTextIcon className="w-5 h-5 mr-2" />
+                Content
+            </button>
+            <button 
+                className={`flex-1 flex items-center justify-center p-3 text-sm font-medium transition-colors ${activeView === 'brand' ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400 hover:text-white'}`}
+                onClick={() => setActiveView('brand')}
+            >
+                <PaintBrushIcon className="w-5 h-5 mr-2" />
+                Brand Guide
+            </button>
+        </div>
+        {activeView === 'content' && (
+            <div className="flex-grow overflow-y-auto">
+                <ContentList
+                    briefs={filteredBriefs}
+                    selectedBriefId={selectedBriefId}
+                    onSelectBrief={handleSelectBrief}
+                    onNewBriefClick={() => {
+                        setIsCreating(true);
+                        setSelectedBriefId(null);
+                    }}
+                />
+            </div>
+        )}
+      </aside>
+      <main className="flex-1 p-6 overflow-y-auto">
+        {activeView === 'content' ? (
+          <>
+            {isCreating ? (
+              <ContentForm domainId={selectedDomainId} onNewBrief={handleNewBrief} />
+            ) : selectedBrief ? (
+              <ContentDetail
+                key={selectedBrief.id}
+                brief={selectedBrief}
+                brandGuide={brandGuide}
+                onUpdate={handleUpdateBrief}
+                onPublish={handlePublishBrief}
+                onSchedule={handleScheduleBrief}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Select a brief from the list or create a new one.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <BrandGuideEditor 
+            brandGuide={brandGuide}
+            onSave={handleSaveBrandGuide}
+          />
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default Dashboard;

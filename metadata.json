@@ -1,0 +1,5 @@
+{
+  "name": "Content Publishing Hub",
+  "description": "An application to manage content briefs, generate AI-powered hero images, and publish content through a streamlined workflow.",
+  "requestFramePermissions": []
+}
