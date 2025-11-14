@@ -1,4 +1,3 @@
-
 export enum Status {
   Draft = 'Draft',
   Published = 'Published',
@@ -34,4 +33,13 @@ export interface ContentBrief {
   scheduledAt?: string;
   heroImageUrl?: string;
   createdAt: string;
+}
+
+export interface User {
+  _id: { $oid: string };
+  email: string;
+  password?: string; // Password might not always be sent from the backend
+  role: string;
+  clientId: string;
+  created_at: { $date: { $numberLong: string } };
 }

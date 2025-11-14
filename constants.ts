@@ -1,10 +1,4 @@
-
 import { Domain, BrandGuide, ContentBrief, Status, ContentType } from './types';
-
-export const USER_CREDENTIALS = {
-  username: 'patrik',
-  password: '34usdfdsf',
-};
 
 export const N8N_WEBHOOK_NEW_BRIEF = 'https://n8n.example.com/webhook/new-brief';
 export const N8N_WEBHOOK_PUBLISH = 'https://n8n.example.com/webhook/publish';

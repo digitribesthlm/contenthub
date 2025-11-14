@@ -4,7 +4,7 @@ This is a web application designed to streamline the content creation and publis
 
 ## Features
 
--   **Secure Login:** Simple username/password authentication.
+-   **Secure Login:** Authenticate against a `users` collection.
 -   **Domain Management:** Organize content by different domains or brands.
 -   **Content Brief Management:** Create new briefs via a form that submits to an n8n webhook, list existing briefs, and view/edit content.
 -   **AI-Powered Image Generation:** Generate hero images for content based on the text and a configurable brand guide.
@@ -18,63 +18,47 @@ This is a web application designed to streamline the content creation and publis
 
 ### Prerequisites
 
--   Node.js and npm (or a compatible package manager).
+-   A modern web browser.
 -   A Google Gemini API Key.
+-   An N8N instance and MongoDB database for the backend.
 
-### Installation & Setup
+### Setup
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd <repository-directory>
-    ```
+1.  **Set up Environment Variables:**
+    Create a `.env` file in the project's root directory. Copy the structure from the "`.env` File Example" section below and fill in your specific values. The application is configured to read these variables.
 
-2.  **Install dependencies:**
-    This project uses `esbuild` for development. If you don't have it, you can install it globally or use `npx`.
+2.  **Configure Backend:**
+    Using the schemas provided in the "Backend Setup Details" section, create the necessary collections in your MongoDB database and the corresponding webhook workflows in your N8N instance.
 
-3.  **Set up Environment Variables:**
-    See the **Configuration** section below for a full list of required variables. For local development, create a file named `.env` in the project root and add your `API_KEY`.
-
-4.  **Run the development server:**
-    You can use a simple server like `vite` or configure `esbuild`'s dev server to load the `.env` file. For example, using `vite`:
-    ```bash
-    npm install -D vite
-    npx vite
-    ```
-    This will start a local server, and you can access the application in your browser.
+3.  **Run the application:**
+    Open the `index.html` file in your browser. The application will load and connect to the services you configured.
 
 ---
 
-## Configuration Checklist
+## Configuration
 
-Here is a complete list of variables and names you will need to define for the backend to work.
+### `.env` File Example
 
-### Application Environment Variables
+Create a file named `.env` in the root of your project and add the following keys. This file should **not** be committed to version control.
 
-Create a `.env` file in the root of the project for local development.
--   `API_KEY`: Your Google Gemini API Key is required for all image generation features.
+```env
+# Your Google Gemini API Key
+API_KEY="your_gemini_api_key_here"
 
-### N8N Webhook Endpoints
+# N8N Webhook Endpoints
+N8N_WEBHOOK_NEW_BRIEF="https://your-n8n-instance.com/webhook/new-brief"
+N8N_WEBHOOK_PUBLISH="https://your-n8n-instance.com/webhook/publish"
+N8N_WEBHOOK_SCHEDULE="https://your-n8n-instance.com/webhook/schedule"
 
-The following webhook URLs are currently hardcoded in `src/constants.ts`. For a production setup, it is recommended to move these to environment variables. You must create these three endpoints in your N8N instance.
+# MongoDB Configuration (for your N8N workflows)
+MONGODB_URL="mongodb+srv://user:password@cluster.mongodb.net/"
+MONGODB_DATABASE="content_hub"
 
--   `N8N_WEBHOOK_NEW_BRIEF`: Receives the initial content brief from the user. (e.g., `https://your-n8n.instance.com/webhook/new-brief`)
--   `N8N_WEBHOOK_PUBLISH`: Receives the final content for immediate publication. (e.g., `https://your-n8n.instance.com/webhook/publish`)
--   `N8N_WEBHOOK_SCHEDULE`: Receives the final content and a future date for scheduled publication. (e.g., `https://your-n8n.instance.com/webhook/schedule`)
-
-### MongoDB Configuration
-
-Your N8N workflows will need to connect to a MongoDB instance.
--   **`MONGODB_URL`**: Your MongoDB connection string.
--   **`MONGODB_DATABASE`**: The name of your database (e.g., `content_hub`).
-
-### MongoDB Collections
-
-Within your database, you must create the following collections with the specified names:
-
--   **`brand_guides`**: Stores brand style information.
--   **`content_briefs`**: Stores all content briefs and their status.
--   **`users` (Recommended)**: The current application uses hardcoded credentials (`patrik`/`34usdfdsf`) in `src/constants.ts` for simplicity. For a real application, you should create a `users` collection to store user credentials securely and update the login logic to query this collection.
+# MongoDB Collection Names
+MONGODB_COLLECTION_USERS="users"
+MONGODB_COLLECTION_CONTENT_BRIEFS="content_briefs"
+MONGODB_COLLECTION_BRAND_GUIDES="brand_guides"
+```
 
 ---
 
@@ -84,7 +68,18 @@ This section provides the schemas and workflow logic for the backend.
 
 ### MongoDB Collection Schemas
 
-#### 1. `brand_guides`
+#### 1. `users`
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `_id` | ObjectId | MongoDB's unique identifier. |
+| `email` | String | The user's email address for login. **Required, Unique.** |
+| `password` | String | The user's password. For production, this should be hashed. **Required.** |
+| `role` | String | User role (e.g., "client", "admin"). |
+| `clientId` | String | An identifier for the client the user belongs to. |
+| `created_at` | ISODate | Timestamp of user creation. |
+
+#### 2. `brand_guides`
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
@@ -92,9 +87,9 @@ This section provides the schemas and workflow logic for the backend.
 | `domainId` | String | A unique identifier for the domain (e.g., "xxx", "yyy"). **Required.** |
 | `stylePrompt`| String | The detailed text prompt describing the desired image style. **Required.** |
 | `toneOfVoice`| String | The guide for the content's writing style. **Required.** |
-| `styleImageUrl`| String | (Optional) A base64-encoded URL of a reference image for styling. |
+| `styleImageUrl`| String | (Optional) A URL of a reference image for styling. |
 
-#### 2. `content_briefs`
+#### 3. `content_briefs`
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
