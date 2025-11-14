@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ContentBrief, Domain, BrandGuide, Status, User } from '../types';
-import { MOCK_DOMAINS, MOCK_BRAND_GUIDES, MOCK_CONTENT_BRIEFS } from '../constants';
+import { fetchDomains, fetchBrandGuides, fetchContentBriefs } from '../services/apiService';
 import ContentList from './ContentList';
 import ContentDetail from './ContentDetail';
 import ContentForm from './ContentForm';
@@ -14,23 +14,47 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  // Filter all data sources by the logged-in user's clientId
-  const userDomains = useMemo(() => MOCK_DOMAINS.filter(d => d.clientId === user.clientId), [user.clientId]);
-  const userBrandGuides = useMemo(() => MOCK_BRAND_GUIDES.filter(bg => bg.clientId === user.clientId), [user.clientId]);
-  const userContentBriefs = useMemo(() => MOCK_CONTENT_BRIEFS.filter(b => b.clientId === user.clientId), [user.clientId]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [brandGuides, setBrandGuides] = useState<BrandGuide[]>([]);
+  const [briefs, setBriefs] = useState<ContentBrief[]>([]);
   
-  const [briefs, setBriefs] = useState<ContentBrief[]>(userContentBriefs);
-  const [brandGuides, setBrandGuides] = useState<BrandGuide[]>(userBrandGuides);
-  const [selectedDomainId, setSelectedDomainId] = useState<string | undefined>(userDomains[0]?.id);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedDomainId, setSelectedDomainId] = useState<string | undefined>();
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
 
   useEffect(() => {
-    if (!selectedDomainId && userDomains.length > 0) {
-      setSelectedDomainId(userDomains[0].id);
-    }
-  }, [userDomains, selectedDomainId]);
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // Fetch all data in parallel
+        const [fetchedDomains, fetchedBrandGuides, fetchedBriefs] = await Promise.all([
+          fetchDomains(user.clientId),
+          fetchBrandGuides(user.clientId),
+          fetchContentBriefs(user.clientId)
+        ]);
+        
+        setDomains(fetchedDomains);
+        setBrandGuides(fetchedBrandGuides);
+        setBriefs(fetchedBriefs);
+
+        if (fetchedDomains.length > 0) {
+          setSelectedDomainId(fetchedDomains[0].id);
+        }
+
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+        setError("Could not load your data. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, [user.clientId]);
   
   const filteredBriefs = useMemo(() => {
     if (!selectedDomainId) return [];
@@ -90,13 +114,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         g.domainId === selectedDomainId ? { ...g, ...updatedGuide } : g
       )
     );
+    // In a real app, you'd also make an API call here to save to the backend
   }, [selectedDomainId]);
 
-  if (!selectedDomainId || !brandGuide) {
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading your workspace...</div>;
+  }
+  
+  if (error) {
+     return <div className="flex h-screen items-center justify-center text-red-400">{error}</div>;
+  }
+
+  if (domains.length === 0) {
       return (
         <div className="flex h-screen items-center justify-center text-gray-400">
             <div className="text-center">
                 <p>No domains configured for your account.</p>
+                <p className="text-sm mt-1">Please contact support to set up your first domain.</p>
+                <button onClick={onLogout} className="mt-4 text-indigo-400 hover:text-indigo-300">Logout</button>
+            </div>
+        </div>
+      );
+  }
+  
+  if (!selectedDomainId || !brandGuide) {
+       return (
+        <div className="flex h-screen items-center justify-center text-gray-400">
+            <div className="text-center">
+                <p>Could not load brand guide for the selected domain.</p>
                 <button onClick={onLogout} className="mt-4 text-indigo-400 hover:text-indigo-300">Logout</button>
             </div>
         </div>
@@ -124,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               setIsCreating(false);
             }}
           >
-            {userDomains.map(domain => (
+            {domains.map(domain => (
               <option key={domain.id} value={domain.id}>{domain.name}</option>
             ))}
           </select>

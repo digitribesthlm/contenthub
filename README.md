@@ -20,7 +20,7 @@ This is a web application designed to streamline the content creation and publis
 
 -   A modern web browser.
 -   A Google Gemini API Key.
--   An N8N instance and MongoDB database for the backend.
+-   A live backend with a REST API, an N8N instance, and a MongoDB database.
 
 ### Setup
 
@@ -29,8 +29,11 @@ This is a web application designed to streamline the content creation and publis
 
 2.  **Configure Backend:**
     Using the schemas provided in the "Backend Setup Details" section, create the necessary collections in your MongoDB database and the corresponding webhook workflows in your N8N instance.
+    
+3.  **Implement Backend API:**
+    Create a backend service (e.g., using Node.js/Express, Python/FastAPI) that exposes the API endpoints listed under "Connecting to a Live Backend". This service will handle authentication and database queries.
 
-3.  **Run the application:**
+4.  **Run the application:**
     Open the `index.html` file in your browser. The application will load and connect to the services you configured.
 
 ---
@@ -50,7 +53,7 @@ N8N_WEBHOOK_NEW_BRIEF="https://your-n8n-instance.com/webhook/new-brief"
 N8N_WEBHOOK_PUBLISH="https://your-n8n-instance.com/webhook/publish"
 N8N_WEBHOOK_SCHEDULE="https://your-n8n-instance.com/webhook/schedule"
 
-# MongoDB Configuration (for your N8N workflows)
+# MongoDB Configuration (for your N8N workflows and Backend API)
 MONGODB_URL="mongodb+srv://user:password@cluster.mongodb.net/"
 MONGODB_DATABASE="content_hub"
 
@@ -59,6 +62,28 @@ MONGODB_COLLECTION_USERS="users"
 MONGODB_COLLECTION_CONTENT_BRIEFS="content_briefs"
 MONGODB_COLLECTION_BRAND_GUIDES="brand_guides"
 ```
+
+---
+
+## Connecting to a Live Backend
+
+This frontend application is now a "shell" that expects to communicate with a live backend API. All mock data has been removed. You must implement the following API endpoints in your backend.
+
+**IMPORTANT:** Every endpoint must be authenticated and should use the `clientId` from the authenticated user's token/session to scope all database queries.
+
+-   `POST /api/login`
+    -   **Body:** `{ "email": "...", "password": "..." }`
+    -   **Success Response (200 OK):** The full `User` object (without the password).
+    -   **Failure Response (401 Unauthorized):** An error message.
+
+-   `GET /api/domains?clientId={clientId}`
+    -   **Success Response (200 OK):** An array of `Domain` objects.
+
+-   `GET /api/brand-guides?clientId={clientId}`
+    -   **Success Response (200 OK):** An array of `BrandGuide` objects.
+
+-   `GET /api/content-briefs?clientId={clientId}`
+    -   **Success Response (200 OK):** An array of `ContentBrief` objects.
 
 ---
 
@@ -74,7 +99,7 @@ This section provides the schemas and workflow logic for the backend. **All API 
 | :--- | :--- | :--- |
 | `_id` | ObjectId | MongoDB's unique identifier. |
 | `email` | String | The user's email address for login. **Required, Unique.** |
-| `password` | String | The user's password. For production, this should be hashed. **Required.** |
+| `password` | String | The user's password. **STRONGLY RECOMMEND HASHING with bcrypt.** |
 | `role` | String | User role (e.g., "client", "admin"). |
 | `clientId` | String | An identifier for the client the user belongs to. **Required.** |
 | `created_at` | ISODate | Timestamp of user creation. |
