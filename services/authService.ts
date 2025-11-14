@@ -28,7 +28,8 @@ export const login = (email: string, password: string): Promise<User> => {
         const { password: _, ...userWithoutPassword } = MOCK_USER;
         resolve(userWithoutPassword);
       } else {
-        console.log('Authentication failed');
+        console.error(`Authentication failed. Attempted with email: "${email}" and password: "${password}"`);
+        console.log('Expected credentials for mock user:', { email: MOCK_USER.email, password: MOCK_USER.password });
         reject(new Error('Invalid email or password'));
       }
     }, 1000); // Simulate network delay
