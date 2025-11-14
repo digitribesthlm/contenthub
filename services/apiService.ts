@@ -10,7 +10,8 @@ import { Domain, BrandGuide, ContentBrief } from '../types';
 // #                                                                          #
 // ############################################################################
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Use relative path in production (Vercel), localhost in development
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000');
 
 export const fetchClientData = async (clientId: string) => {
     console.log('\n' + '='.repeat(60));
@@ -97,7 +98,7 @@ export const saveBrandGuideImage = async (brandGuideId: string, imageData: strin
     console.log('Image size:', Math.round(imageData.length / 1024), 'KB');
     console.log('MIME type:', mimeType);
     
-    const apiUrl = import.meta.env.API_URL || 'http://localhost:5000';
+    const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000');
     const url = `${apiUrl}/api/brand-guide/${brandGuideId}/image`;
     console.log('Sending to:', url);
     

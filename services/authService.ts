@@ -17,7 +17,8 @@ export const login = async (email: string, password: string): Promise<User> => {
 
   try {
     console.log('\n🔄 Connecting to MongoDB backend...');
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    // Use relative path in production (Vercel), localhost in development
+    const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000');
     console.log('📡 API URL:', apiUrl);
 
     const response = await fetch(`${apiUrl}/api/auth/login`, {
