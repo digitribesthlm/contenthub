@@ -10,15 +10,8 @@ import { User } from '../types';
  * @throws An error if authentication fails or if the backend is not available.
  */
 export const login = async (email: string, password: string): Promise<User> => {
-  console.log('\n🔐 === LOGIN FLOW ===');
-  console.log('📧 Email:', email);
-  console.log('🔑 Password length:', password.length);
-  console.log('⏰ Time:', new Date().toISOString());
-
   try {
-    console.log('\n🔄 Connecting to MongoDB backend...');
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    console.log('📡 API URL:', apiUrl);
+    const apiUrl = import.meta.env.API_URL || 'http://localhost:5000';
 
     const response = await fetch(`${apiUrl}/api/auth/login`, {
       method: 'POST',
@@ -26,14 +19,9 @@ export const login = async (email: string, password: string): Promise<User> => {
       body: JSON.stringify({ email, password }),
     });
 
-    console.log('✓ Backend responded with status:', response.status);
     const data = await response.json();
 
     if (response.ok && data.success) {
-      console.log('✅ LOGIN SUCCESS!');
-      console.log('👤 User:', data.user.email);
-      console.log('🆔 ClientId:', data.user.clientId);
-      
       const user: User = {
         _id: { $oid: data.user.id },
         email: data.user.email,
@@ -43,12 +31,10 @@ export const login = async (email: string, password: string): Promise<User> => {
       };
       return user;
     } else {
-      console.error('❌ LOGIN FAILED:', data.error);
       throw new Error(data.error || 'Authentication failed');
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error('❌ BACKEND ERROR:', errorMessage);
     throw new Error(`Backend connection failed: ${errorMessage}`);
   }
 };
