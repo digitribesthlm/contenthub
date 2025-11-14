@@ -3,13 +3,23 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-    // Load ALL environment variables (no prefix required)
+    // Load environment variables - ONLY expose safe frontend vars
     const env = loadEnv(mode, '.', '');
     
-    // Define all env vars for the frontend
+    // Define env vars for the frontend (security: only whitelisted frontend vars)
     const define: Record<string, string> = {};
+    const SAFE_VARS = [
+      'API_URL',
+      'GEMINI_API_KEY',
+      'N8N_WEBHOOK_NEW_BRIEF',
+      'N8N_WEBHOOK_PUBLISH',
+      'N8N_WEBHOOK_SCHEDULE',
+    ]; // Only these are safe for frontend
+    
     Object.keys(env).forEach(key => {
-      define[`import.meta.env.${key}`] = JSON.stringify(env[key]);
+      if (SAFE_VARS.includes(key)) {
+        define[`import.meta.env.${key}`] = JSON.stringify(env[key]);
+      }
     });
 
     return {

@@ -20,7 +20,13 @@ export const fetchClientData = async (clientId: string) => {
     console.log('API URL:', `${API_URL}/api/client/${clientId}`);
     
     try {
-        const response = await fetch(`${API_URL}/api/client/${clientId}`);
+        const response = await fetch(`${API_URL}/api/client/${clientId}`, {
+            method: 'GET',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Client-ID': clientId // Authentication header
+            },
+        });
         console.log('✓ Response status:', response.status);
         
         if (!response.ok) {

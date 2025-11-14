@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -46,9 +47,21 @@ console.log('👥 Users collection:', MONGODB_COLLECTION_USERS);
 let db;
 
 // Middleware
-app.use(cors());
-app.use(express.json({ limit: '100mb' })); // Allow large base64 image uploads
-app.use(express.urlencoded({ limit: '100mb', extended: true })); // Also for form data
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*', // Set CORS_ORIGIN in .env.local for production
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' })); // Reduced from 100mb for security
+app.use(express.urlencoded({ limit: '10mb', extended: true })); 
+
+// Rate limiting for login (max 5 attempts per 15 minutes per IP)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Too many login attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -64,8 +77,8 @@ const connectDB = async () => {
   }
 };
 
-// Login endpoint
-app.post('/api/auth/login', async (req, res) => {
+// Login endpoint (with rate limiting)
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -102,8 +115,19 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Middleware to check authentication via clientId in request
+const requireAuth = (req, res, next) => {
+  const { clientId } = req.params;
+  const requestClientId = req.get('X-Client-ID');
+  
+  if (!requestClientId || requestClientId !== clientId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
 // Get client data
-app.get('/api/client/:clientId', async (req, res) => {
+app.get('/api/client/:clientId', requireAuth, async (req, res) => {
   try {
     const { clientId } = req.params;
 
@@ -276,26 +300,7 @@ app.post('/api/brand-guide/:brandGuideId/image', async (req, res) => {
   }
 });
 
-// Debug endpoint to check brand guide data
-app.get('/api/debug/brand-guides', async (req, res) => {
-  try {
-    const allBrandGuides = await db.collection(MONGODB_COLLECTION_BRAND_GUIDES).find({}).toArray();
-    res.json({
-      total: allBrandGuides.length,
-      guides: allBrandGuides.map(bg => ({
-        id: bg._id.toString(),
-        domainId: bg.domainId,
-        clientId: bg.clientId,
-        hasStyleImageData: !!bg.styleImageData,
-        styleImageDataLength: bg.styleImageData ? bg.styleImageData.length : 0,
-        styleImageMimeType: bg.styleImageMimeType,
-        styleImageUpdatedAt: bg.styleImageUpdatedAt,
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// NOTE: Debug endpoints removed for security. Enable only in development if needed.
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
