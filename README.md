@@ -1,25 +1,3 @@
-# IMPORTANT: Running in Development Mode
-
-This application is currently configured to run in a **development mode** using a **mock API layer**. This means:
-
-1.  **You can log in and test the entire UI.**
-2.  **The application is populated with sample data.**
-
-This setup allows you to develop and test the frontend application without needing a live, running backend.
-
-## Development Login Credentials
-
--   **Email:** `test@example.com`
--   **Password:** `password`
-
----
-
-## Switching to Production
-
-Before deploying your application, you **must** connect it to your live backend. To do this, go into the files in the `/services` directory (`authService.ts`, `apiService.ts`, `n8nService.ts`) and replace the mock, development-only functions with real `fetch` calls to your API endpoints.
-
----
-
 # Content Publishing Hub
 
 This is a web application designed to streamline the content creation and publishing workflow. It allows users to manage content briefs across different domains, generate AI-powered hero images tailored to specific brand guides, and push content to a publishing endpoint via a webhook.
@@ -56,7 +34,7 @@ This is a web application designed to streamline the content creation and publis
     Create a backend service (e.g., using Node.js/Express, Python/FastAPI) that exposes the API endpoints listed under "Connecting to a Live Backend". This service will handle authentication and database queries.
 
 4.  **Run the application:**
-    Open the `index.html` file in your browser. The application will load and connect to the services you configured.
+    Open the `index.html` file in your browser. The application will load and attempt to connect to the backend services you configured.
 
 ---
 
@@ -81,7 +59,7 @@ MONGODB_DATABASE="content_hub"
 
 # MongoDB Collection Names
 MONGODB_COLLECTION_USERS="users"
-MONGODB_COLLECTION_CONTENT_BRIEFS="content_briefs"
+MONGODB_COLLECTION_CONTENT_BRIFS="content_briefs"
 MONGODB_COLLECTION_BRAND_GUIDES="brand_guides"
 ```
 

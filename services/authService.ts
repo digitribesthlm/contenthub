@@ -1,44 +1,16 @@
 import { User } from '../types';
 
 /**
- * MOCK LOGIN FOR DEVELOPMENT
+ * Authenticates a user by making a POST request to the backend API.
  * 
- * This function simulates a login request to a backend API.
- * It allows you to test the application's UI without a live backend.
- * 
- * To switch to production, replace the contents of this function
- * with a real `fetch` call to your authentication endpoint.
- * 
- * Development credentials:
- * - email: test@example.com
- * - password: password
+ * @param email The user's email address.
+ * @param password The user's password.
+ * @returns A Promise that resolves to the authenticated User object.
+ * @throws An error if authentication fails or if there's a network issue.
  */
 export const login = async (email: string, password: string): Promise<User> => {
-  console.log("--- DEVELOPMENT MODE: Simulating login ---");
-
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (email === 'test@example.com' && password === 'password') {
-        const mockUser: User = {
-          _id: { $oid: '6750d1d3aaba4edf40a3b8df' },
-          email: 'test@example.com',
-          role: 'client',
-          clientId: 'client-123', // This clientId will be used to filter data
-          created_at: { $date: { $numberLong: Date.now().toString() } },
-        };
-        console.log('Mock authentication successful for user:', mockUser.email);
-        resolve(mockUser);
-      } else {
-        console.error('Mock authentication failed. Attempted with email:', email);
-        reject(new Error('Invalid email or password'));
-      }
-    }, 500); // Simulate network delay
-  });
-
-  /*
-  // --- PRODUCTION CODE ---
-  // When your backend is ready, delete the Promise code above and
-  // uncomment the fetch call below.
+  // This is the production-ready code.
+  // It expects a backend server to be running and listening at '/api/login'.
   
   const response = await fetch('/api/login', {
     method: 'POST',
@@ -59,5 +31,4 @@ export const login = async (email: string, password: string): Promise<User> => {
   const user: User = await response.json();
   console.log('Authentication successful for user:', user.email);
   return user;
-  */
 };
