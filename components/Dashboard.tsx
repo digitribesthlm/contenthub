@@ -26,6 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
   const [showSidebar, setShowSidebar] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,6 +48,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           setSelectedDomainId(fetchedDomains[0].id);
         }
 
+        // Auto-open sidebar on mobile on first load
+        if (window.innerWidth < 1024 && !hasInteracted) {
+          setShowSidebar(true);
+        }
+
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
         setError("Could not load your data. Please try again later.");
@@ -55,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       }
     };
     loadData();
-  }, [user.clientId]);
+  }, [user.clientId, hasInteracted]);
   
   const filteredBriefs = useMemo(() => {
     if (!selectedDomainId) return [];
@@ -76,6 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     setSelectedBriefId(id);
     setIsCreating(false);
     setShowSidebar(false); // Close sidebar on mobile after selection
+    setHasInteracted(true);
   }, []);
 
   const handleUpdateBrief = useCallback((updatedBrief: Partial<ContentBrief>) => {
@@ -236,8 +243,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 onSchedule={handleScheduleBrief}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p className="text-center px-4">Select a brief from the list or create a new one.</p>
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
+                <div className="text-center max-w-md">
+                  <p className="text-lg mb-4">Select a brief from the list or create a new one.</p>
+                  <button
+                    onClick={() => setShowSidebar(true)}
+                    className="lg:hidden inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Open Menu
+                  </button>
+                </div>
               </div>
             )}
           </>
