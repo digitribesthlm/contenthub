@@ -10,31 +10,75 @@ import { Domain, BrandGuide, ContentBrief } from '../types';
 // #                                                                          #
 // ############################################################################
 
-export const fetchDomains = async (clientId: string): Promise<Domain[]> => {
-    // In a real app, the clientId would typically be derived from an auth token 
-    // on the backend, not passed from the client. But we pass it here to be explicit.
-    console.log(`Fetching domains for clientId: ${clientId}`);
-    const response = await fetch(`/api/domains`); // Your backend should use the user's session/token to filter by clientId
-    if (!response.ok) {
-        throw new Error(`API call to fetch domains failed with status: ${response.status}`);
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+export const fetchClientData = async (clientId: string) => {
+    console.log('\n' + '='.repeat(60));
+    console.log('📡 === FETCHING CLIENT DATA ===');
+    console.log('='.repeat(60));
+    console.log('ClientId:', clientId);
+    console.log('API URL:', `${API_URL}/api/client/${clientId}`);
+    
+    try {
+        const response = await fetch(`${API_URL}/api/client/${clientId}`);
+        console.log('✓ Response status:', response.status);
+        
+        if (!response.ok) {
+            console.error('✗ Response not OK');
+            throw new Error(`API call failed with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('\n✓ Full response data:', data);
+        console.log('\n📊 Parsed data:');
+        console.log('   Domains:', data.data?.domains?.length || 0, 'items');
+        if (data.data?.domains) {
+            data.data.domains.forEach((d, i) => console.log(`      [${i}] ${d.name} (id: ${d.id})`));
+        }
+        console.log('   Brand guides:', data.data?.brandGuides?.length || 0, 'items');
+        if (data.data?.brandGuides) {
+            data.data.brandGuides.forEach((bg, i) => console.log(`      [${i}] Domain: ${bg.domainId}`));
+        }
+        console.log('   Content briefs:', data.data?.briefs?.length || 0, 'items');
+        if (data.data?.briefs) {
+            data.data.briefs.forEach((b, i) => console.log(`      [${i}] ${b.title} (domain: ${b.domainId})`));
+        }
+        console.log('='.repeat(60) + '\n');
+        
+        return data;
+    } catch (error) {
+        console.error('❌ Error fetching client data:', error);
+        console.log('='.repeat(60) + '\n');
+        throw error;
     }
-    return response.json();
+};
+
+export const fetchDomains = async (clientId: string): Promise<Domain[]> => {
+    try {
+        const data = await fetchClientData(clientId);
+        return data.data?.domains || [];
+    } catch (error) {
+        console.error('Error fetching domains:', error);
+        return [];
+    }
 };
 
 export const fetchBrandGuides = async (clientId: string): Promise<BrandGuide[]> => {
-    console.log(`Fetching brand guides for clientId: ${clientId}`);
-    const response = await fetch(`/api/brand-guides`);
-    if (!response.ok) {
-        throw new Error(`API call to fetch brand guides failed with status: ${response.status}`);
+    try {
+        const data = await fetchClientData(clientId);
+        return data.data?.brandGuides || [];
+    } catch (error) {
+        console.error('Error fetching brand guides:', error);
+        return [];
     }
-    return response.json();
 };
 
 export const fetchContentBriefs = async (clientId: string): Promise<ContentBrief[]> => {
-    console.log(`Fetching content briefs for clientId: ${clientId}`);
-    const response = await fetch(`/api/content-briefs`);
-    if (!response.ok) {
-        throw new Error(`API call to fetch content briefs failed with status: ${response.status}`);
+    try {
+        const data = await fetchClientData(clientId);
+        return data.data?.briefs || [];
+    } catch (error) {
+        console.error('Error fetching content briefs:', error);
+        return [];
     }
-    return response.json();
 };

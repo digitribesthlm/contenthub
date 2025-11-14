@@ -1,8 +1,20 @@
 import { GoogleGenAI, Modality, Part } from "@google/genai";
 
-// Assume process.env.API_KEY is available in the environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 const imageModel = 'gemini-2.5-flash-image';
+
+// Lazy initialization of Gemini client
+let aiClient: GoogleGenAI | null = null;
+
+const getGeminiClient = (): GoogleGenAI => {
+    if (!aiClient) {
+        const apiKey = import.meta.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error("GEMINI_API_KEY environment variable is not set. Please add it to your .env.local file.");
+        }
+        aiClient = new GoogleGenAI({ apiKey });
+    }
+    return aiClient;
+};
 
 const getBase64Data = (dataUrl: string): { mimeType: string, data: string } => {
     const [header, base64Data] = dataUrl.split(',');
@@ -26,18 +38,20 @@ const processApiResponse = (response: any): string => {
 
 export const generateHeroImage = async (contentPrompt: string, stylePrompt: string, styleImageUrl?: string): Promise<string> => {
   try {
+    const ai = getGeminiClient();
     const parts: Part[] = [];
 
     if (styleImageUrl) {
-        console.log("Using multimodal generation with style image.");
+        console.log("✨ Using multimodal generation with style image.");
         const { mimeType, data } = getBase64Data(styleImageUrl);
         parts.push({ inlineData: { data, mimeType } });
         parts.push({ text: `Analyze the style, composition, and mood of the provided image. Then, create a new hero image based on the following content brief, ensuring the new image matches the style of the reference image. Content: "${contentPrompt}". Style notes: "${stylePrompt}"` });
     } else {
-        console.log("Using text-to-image generation.");
+        console.log("✨ Using text-to-image generation.");
         parts.push({ text: `Create a hero image based on the following content brief. Content: "${contentPrompt}". Apply this style: "${stylePrompt}"` });
     }
 
+    console.log("🎨 Calling Gemini API...");
     const response = await ai.models.generateContent({
         model: imageModel,
         contents: { parts },
@@ -46,18 +60,20 @@ export const generateHeroImage = async (contentPrompt: string, stylePrompt: stri
         },
     });
     
+    console.log("✅ Image generated successfully");
     return processApiResponse(response);
 
   } catch (error) {
-    console.error("Error generating image with Gemini:", error);
-    throw new Error("Failed to generate hero image.");
+    console.error("❌ Error generating image with Gemini:", error);
+    throw new Error(`Failed to generate hero image: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
 
 export const editHeroImage = async (baseImage: string, editPrompt: string, stylePrompt: string): Promise<string> => {
-    console.log("Editing image with prompt:", editPrompt);
+    console.log("✏️ Editing image with prompt:", editPrompt);
     try {
+        const ai = getGeminiClient();
         const { mimeType, data } = getBase64Data(baseImage);
         
         const imagePart: Part = {
@@ -68,6 +84,7 @@ export const editHeroImage = async (baseImage: string, editPrompt: string, style
             text: `Edit the provided image based on the following instruction: "${editPrompt}". Maintain the overall style. Additional style guidance: "${stylePrompt}"`
         };
 
+        console.log("🎨 Calling Gemini API to edit image...");
         const response = await ai.models.generateContent({
             model: imageModel,
             contents: {
@@ -78,10 +95,11 @@ export const editHeroImage = async (baseImage: string, editPrompt: string, style
             },
         });
         
+        console.log("✅ Image edited successfully");
         return processApiResponse(response);
 
     } catch (error) {
-        console.error("Error editing image with Gemini:", error);
-        throw new Error("Failed to edit hero image.");
+        console.error("❌ Error editing image with Gemini:", error);
+        throw new Error(`Failed to edit hero image: ${error instanceof Error ? error.message : String(error)}`);
     }
 };

@@ -31,12 +31,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       try {
         setIsLoading(true);
         setError(null);
+        
+        console.log('\n' + '='.repeat(60));
+        console.log('🎬 === DASHBOARD LOADING DATA ===');
+        console.log('='.repeat(60));
+        console.log('User ClientId:', user.clientId);
+        
         // Fetch all data in parallel
         const [fetchedDomains, fetchedBrandGuides, fetchedBriefs] = await Promise.all([
           fetchDomains(user.clientId),
           fetchBrandGuides(user.clientId),
           fetchContentBriefs(user.clientId)
         ]);
+        
+        console.log('\n📦 Data loaded into Dashboard state:');
+        console.log('   Domains:', fetchedDomains.length);
+        console.log('   Brand Guides:', fetchedBrandGuides.length);
+        console.log('   Briefs:', fetchedBriefs.length);
+        console.log('='.repeat(60) + '\n');
         
         setDomains(fetchedDomains);
         setBrandGuides(fetchedBrandGuides);
@@ -125,28 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
      return <div className="flex h-screen items-center justify-center text-red-400">{error}</div>;
   }
 
-  if (domains.length === 0) {
-      return (
-        <div className="flex h-screen items-center justify-center text-gray-400">
-            <div className="text-center">
-                <p>No domains configured for your account.</p>
-                <p className="text-sm mt-1">Please contact support to set up your first domain.</p>
-                <button onClick={onLogout} className="mt-4 text-indigo-400 hover:text-indigo-300">Logout</button>
-            </div>
-        </div>
-      );
-  }
-  
-  if (!selectedDomainId || !brandGuide) {
-       return (
-        <div className="flex h-screen items-center justify-center text-gray-400">
-            <div className="text-center">
-                <p>Could not load brand guide for the selected domain.</p>
-                <button onClick={onLogout} className="mt-4 text-indigo-400 hover:text-indigo-300">Logout</button>
-            </div>
-        </div>
-      );
-  }
+  // Dashboard shows even with no data - just empty states
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
