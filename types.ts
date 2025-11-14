@@ -17,11 +17,15 @@ export interface Domain {
 }
 
 export interface BrandGuide {
+  id?: string;
   domainId: string;
   clientId: string;
   stylePrompt: string;
   toneOfVoice: string;
   styleImageUrl?: string;
+  styleImageData?: string; // Base64 encoded image (stored in MongoDB)
+  styleImageMimeType?: string;
+  styleImageUpdatedAt?: string;
 }
 
 export interface ContentBrief {

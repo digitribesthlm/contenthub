@@ -47,7 +47,8 @@ let db;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '100mb' })); // Allow large base64 image uploads
+app.use(express.urlencoded({ limit: '100mb', extended: true })); // Also for form data
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -179,6 +180,44 @@ app.get('/api/client/:clientId', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching client data:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update brand guide with image data
+app.post('/api/brand-guide/:brandGuideId/image', async (req, res) => {
+  try {
+    const { brandGuideId } = req.params;
+    const { styleImageData, styleImageMimeType } = req.body;
+
+    if (!ObjectId.isValid(brandGuideId)) {
+      return res.status(400).json({ error: 'Invalid brandGuideId' });
+    }
+
+    if (!styleImageData) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    console.log(`✓ Saving image for brand guide: ${brandGuideId}`);
+
+    const result = await db.collection(MONGODB_COLLECTION_BRAND_GUIDES).updateOne(
+      { _id: new ObjectId(brandGuideId) },
+      {
+        $set: {
+          styleImageData: styleImageData, // Base64 encoded image
+          styleImageMimeType: styleImageMimeType || 'image/jpeg',
+          styleImageUpdatedAt: new Date().toISOString(),
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Brand guide not found' });
+    }
+
+    res.json({ success: true, message: 'Image saved successfully' });
+  } catch (error) {
+    console.error('❌ Error saving brand guide image:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });

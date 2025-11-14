@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrandGuide } from '../types';
 import { CameraIcon, TrashIcon } from './Icons';
+import { saveBrandGuideImage } from '../services/apiService';
 
 interface BrandGuideEditorProps {
   brandGuide: BrandGuide;
@@ -25,13 +26,39 @@ const BrandGuideEditor: React.FC<BrandGuideEditorProps> = ({ brandGuide, onSave 
                   toneOfVoice !== brandGuide.toneOfVoice ||
                   styleImageUrl !== brandGuide.styleImageUrl;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    // Simulate async save
-    setTimeout(() => {
+    try {
+      // If there's a new base64 image (starts with 'data:'), save it to MongoDB
+      if (styleImageUrl && styleImageUrl.startsWith('data:') && brandGuide.id) {
+        console.log('Saving new image to MongoDB...');
+        
+        // Extract MIME type from data URL
+        const mimeType = styleImageUrl.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+        // Extract base64 data
+        const base64Data = styleImageUrl.split(',')[1];
+        
+        await saveBrandGuideImage(brandGuide.id, base64Data, mimeType);
+        
+        // Update with the saved image
+        onSave({ 
+          stylePrompt, 
+          toneOfVoice, 
+          styleImageUrl, // Keep the base64 for display
+          styleImageData: base64Data,
+          styleImageMimeType: mimeType,
+        });
+      } else {
+        // Just update text fields
         onSave({ stylePrompt, toneOfVoice, styleImageUrl });
-        setIsSaving(false);
-    }, 500);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Failed to save:', errorMessage);
+      alert(`Failed to save changes: ${errorMessage}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

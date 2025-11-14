@@ -82,3 +82,43 @@ export const fetchContentBriefs = async (clientId: string): Promise<ContentBrief
         return [];
     }
 };
+
+export const saveBrandGuideImage = async (brandGuideId: string, imageData: string, mimeType: string = 'image/jpeg'): Promise<void> => {
+    console.log('\n' + '='.repeat(60));
+    console.log('💾 SAVING BRAND GUIDE IMAGE TO MONGODB');
+    console.log('='.repeat(60));
+    console.log('Brand Guide ID:', brandGuideId);
+    console.log('Image size:', Math.round(imageData.length / 1024), 'KB');
+    console.log('MIME type:', mimeType);
+    
+    const apiUrl = import.meta.env.API_URL || 'http://localhost:5000';
+    const url = `${apiUrl}/api/brand-guide/${brandGuideId}/image`;
+    console.log('Sending to:', url);
+    
+    try {
+        const payload = {
+            styleImageData: imageData,
+            styleImageMimeType: mimeType,
+        };
+        console.log('Payload size:', JSON.stringify(payload).length, 'bytes');
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error response:', errorText);
+            throw new Error(`Failed to save image: ${response.status}`);
+        }
+
+        console.log('✅ Image saved to MongoDB successfully');
+        console.log('='.repeat(60) + '\n');
+    } catch (error) {
+        console.error('❌ Error saving image:', error);
+        console.log('='.repeat(60) + '\n');
+        throw error;
+    }
+};
