@@ -4,8 +4,8 @@ This is a web application designed to streamline the content creation and publis
 
 ## Features
 
--   **Secure Login:** Authenticate against a `users` collection.
--   **Domain Management:** Organize content by different domains or brands.
+-   **Secure, Multi-Tenant Login:** Authenticate against a `users` collection. All data is scoped to the logged-in user's `clientId`.
+-   **Domain Management:** Organize content by different domains or brands, specific to your client account.
 -   **Content Brief Management:** Create new briefs via a form that submits to an n8n webhook, list existing briefs, and view/edit content.
 -   **AI-Powered Image Generation:** Generate hero images for content based on the text and a configurable brand guide.
 -   **Multimodal Image Styling:** Use a reference image to guide the AI's visual style.
@@ -64,7 +64,7 @@ MONGODB_COLLECTION_BRAND_GUIDES="brand_guides"
 
 ## Backend Setup Details (N8N & MongoDB)
 
-This section provides the schemas and workflow logic for the backend.
+This section provides the schemas and workflow logic for the backend. **All API calls and database queries must be scoped by `clientId` for security.**
 
 ### MongoDB Collection Schemas
 
@@ -76,7 +76,7 @@ This section provides the schemas and workflow logic for the backend.
 | `email` | String | The user's email address for login. **Required, Unique.** |
 | `password` | String | The user's password. For production, this should be hashed. **Required.** |
 | `role` | String | User role (e.g., "client", "admin"). |
-| `clientId` | String | An identifier for the client the user belongs to. |
+| `clientId` | String | An identifier for the client the user belongs to. **Required.** |
 | `created_at` | ISODate | Timestamp of user creation. |
 
 #### 2. `brand_guides`
@@ -85,6 +85,7 @@ This section provides the schemas and workflow logic for the backend.
 | :--- | :--- | :--- |
 | `_id` | ObjectId | MongoDB's unique identifier. |
 | `domainId` | String | A unique identifier for the domain (e.g., "xxx", "yyy"). **Required.** |
+| `clientId` | String | The client this guide belongs to. **Required, Indexed.** |
 | `stylePrompt`| String | The detailed text prompt describing the desired image style. **Required.** |
 | `toneOfVoice`| String | The guide for the content's writing style. **Required.** |
 | `styleImageUrl`| String | (Optional) A URL of a reference image for styling. |
@@ -95,6 +96,7 @@ This section provides the schemas and workflow logic for the backend.
 | :--- | :--- | :--- |
 | `_id` | ObjectId | MongoDB's unique identifier. |
 | `domainId` | String | The domain this content belongs to. **Required.** |
+| `clientId` | String | The client this brief belongs to. **Required, Indexed.** |
 | `title` | String | The title of the article. **Required.** |
 | `brief` | String | The original content brief provided by the user. **Required.** |
 | `content` | String | The main body of the content, which can be edited. **Required.** |
@@ -111,31 +113,31 @@ This section provides the schemas and workflow logic for the backend.
 #### Webhook 1: New Content Brief Creation (`/webhook/new-brief`)
 
 -   **Trigger:** `POST` request.
--   **Expected Body:** `{ "title": "...", "brief": "...", "domainId": "..." }`
+-   **Expected Body:** `{ "title": "...", "brief": "...", "domainId": "...", "clientId": "..." }`
 -   **Logic:**
     1.  Receive the webhook.
     2.  (Optional) Use a Gemini node to generate an initial paragraph of content from the `brief`.
-    3.  Use a MongoDB node to **insert** a new document into the `content_briefs` collection with a default `status` of "Draft".
+    3.  Use a MongoDB node to **insert** a new document into the `content_briefs` collection, ensuring the `clientId` from the payload is saved.
     4.  Respond to the webhook with the full document created in MongoDB.
 
 #### Webhook 2: Content Publishing (`/webhook/publish`)
 
 -   **Trigger:** `POST` request.
--   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "contentType": "..." }`
+-   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "clientId": "...", "contentType": "..." }`
 -   **Logic:**
     1.  Receive the webhook.
-    2.  Use a MongoDB node to **update** the status of the corresponding brief to "Published".
+    2.  Use a MongoDB node to find and **update** the document where `_id` matches `id` AND `clientId` matches `clientId`. This prevents users from one client from publishing content for another. Update status to "Published".
     3.  Use a WordPress, Ghost, or HTTP Request node to send the content to your CMS for immediate publication.
     4.  Respond with a success message.
 
 #### Webhook 3: Content Scheduling (`/webhook/schedule`)
 
 -   **Trigger:** `POST` request.
--   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "contentType": "...", "scheduledAt": "..." }`
+-   **Expected Body:** `{ "id": "...", "title": "...", "content": "...", "heroImageUrl": "...", "domainId": "...", "clientId": "...", "contentType": "...", "scheduledAt": "..." }`
 -   **Logic:**
     1.  Receive the webhook.
-    2.  Use a MongoDB node to **update** the brief's `status` to "Scheduled" and set the `scheduledAt` timestamp.
-    3.  The workflow should then either use a "Wait" node or be part of a separate cron-triggered workflow that queries for posts where `scheduledAt` is in the past and `status` is "Scheduled".
+    2.  Use a MongoDB node to find and **update** the document (matching on `_id` AND `clientId`) to set the `status` to "Scheduled" and the `scheduledAt` timestamp.
+    3.  The workflow should then either use a "Wait" node or be part of a separate cron-triggered workflow that queries for posts where `scheduledAt` is in the past, `status` is "Scheduled", and `clientId` matches.
     4.  Once the time is reached, publish the content using the same logic as the "Publish" webhook.
     5.  After successful publication, update the brief's `status` in MongoDB to "Published".
     6.  Respond immediately to the initial webhook call with a success message.
