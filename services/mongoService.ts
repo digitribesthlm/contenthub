@@ -1,34 +1,51 @@
+import { MongoClient } from 'mongodb';
 import { User, ContentBrief, BrandGuide, Domain } from '../types';
 
+// MongoDB connection from environment variables
+const MONGODB_URL = import.meta.env.VITE_MONGODB_URL || '';
+const MONGODB_DATABASE = import.meta.env.VITE_MONGODB_DATABASE || 'task-manager';
+
+let client: MongoClient | null = null;
+
 /**
- * MongoDB service that uses N8N webhooks to interact with MongoDB
+ * Get MongoDB client connection
  */
-
-const N8N_BASE_URL = 'https://n8n.digitribe.se/webhook';
+async function getMongoClient(): Promise<MongoClient> {
+  if (!client) {
+    client = new MongoClient(MONGODB_URL);
+    await client.connect();
+  }
+  return client;
+}
 
 /**
- * Find a user by email and password
+ * Get database instance
+ */
+async function getDatabase() {
+  const mongoClient = await getMongoClient();
+  return mongoClient.db(MONGODB_DATABASE);
+}
+
+/**
+ * Find a user by email and password - DIRECT MongoDB query
  */
 export async function findUserByCredentials(email: string, password: string): Promise<User | null> {
   try {
-    const response = await fetch(`${N8N_BASE_URL}/find-user`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: email.toLowerCase(),
-        password: password,
-      }),
+    const db = await getDatabase();
+    const usersCollection = db.collection('users');
+    
+    const user = await usersCollection.findOne({
+      email: email.toLowerCase(),
+      password: password, // Simple string comparison as requested
     });
 
-    if (!response.ok) {
-      throw new Error(`Authentication failed: ${response.statusText}`);
+    if (!user) {
+      return null;
     }
 
-    const data = await response.json();
-    return data.user || data || null;
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword as User;
   } catch (error) {
     console.error('Error finding user:', error);
     throw error;
@@ -40,21 +57,11 @@ export async function findUserByCredentials(email: string, password: string): Pr
  */
 export async function getDomainsByClientId(clientId: string): Promise<Domain[]> {
   try {
-    const response = await fetch(`${N8N_BASE_URL}/get-domains`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ clientId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch domains: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.domains || data || [];
+    const db = await getDatabase();
+    const domainsCollection = db.collection('domains');
+    
+    const domains = await domainsCollection.find({ clientId }).toArray();
+    return domains as Domain[];
   } catch (error) {
     console.error('Error fetching domains:', error);
     throw error;
@@ -66,21 +73,16 @@ export async function getDomainsByClientId(clientId: string): Promise<Domain[]> 
  */
 export async function getAllContentBriefsByClient(clientId: string): Promise<ContentBrief[]> {
   try {
-    const response = await fetch(`${N8N_BASE_URL}/get-content-briefs`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ clientId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch briefs: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.briefs || data || [];
+    const db = await getDatabase();
+    const briefsCollection = db.collection('content_briefs');
+    
+    const briefs = await briefsCollection.find({ clientId }).toArray();
+    
+    // Map _id to id for frontend
+    return briefs.map(brief => ({
+      ...brief,
+      id: brief._id.toString(),
+    })) as ContentBrief[];
   } catch (error) {
     console.error('Error fetching content briefs:', error);
     throw error;
@@ -92,21 +94,11 @@ export async function getAllContentBriefsByClient(clientId: string): Promise<Con
  */
 export async function getAllBrandGuidesByClient(clientId: string): Promise<BrandGuide[]> {
   try {
-    const response = await fetch(`${N8N_BASE_URL}/get-brand-guides`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ clientId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch brand guides: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.brandGuides || data || [];
+    const db = await getDatabase();
+    const guidesCollection = db.collection('brand_guides');
+    
+    const guides = await guidesCollection.find({ clientId }).toArray();
+    return guides as BrandGuide[];
   } catch (error) {
     console.error('Error fetching brand guides:', error);
     throw error;
@@ -122,22 +114,13 @@ export async function updateBrandGuide(
   updates: Partial<BrandGuide>
 ): Promise<void> {
   try {
-    const response = await fetch(`${N8N_BASE_URL}/update-brand-guide`, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        clientId,
-        domainId,
-        updates,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update brand guide: ${response.statusText}`);
-    }
+    const db = await getDatabase();
+    const guidesCollection = db.collection('brand_guides');
+    
+    await guidesCollection.updateOne(
+      { clientId, domainId },
+      { $set: updates }
+    );
   } catch (error) {
     console.error('Error updating brand guide:', error);
     throw error;
