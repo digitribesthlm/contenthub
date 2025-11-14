@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { login } from '../services/authService';
+import { User } from '../types';
 
 interface LoginProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: User) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
@@ -18,7 +19,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     try {
       const user = await login(email, password);
       if (user) {
-        onLoginSuccess();
+        onLoginSuccess(user);
       }
     } catch (err) {
       if (err instanceof Error) {

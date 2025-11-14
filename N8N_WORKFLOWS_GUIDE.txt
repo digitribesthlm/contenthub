@@ -1,0 +1,324 @@
+N8N Workflows Guide for MongoDB Integration
+============================================
+
+This guide explains the N8N webhooks you need to create to connect your Content Hub app to MongoDB.
+Each webhook should be configured in your N8N instance at https://n8n.digitribe.se
+
+MongoDB Connection Details:
+---------------------------
+- URL: mongodb+srv://patrik:Writes=true&w=majority&appName=task-manager
+- Database: task-manager
+- Collections: users, content_briefs, brand_guides, domains
+
+Required Webhooks:
+==================
+
+1. FIND USER (Login Authentication)
+------------------------------------
+Webhook URL: https://n8n.digitribe.se/webhook/find-user
+Method: POST
+Purpose: Authenticate user login with email and password
+
+Input Payload:
+{
+  "email": "user@example.com",
+  "password": "userpassword"
+}
+
+Workflow Steps:
+1. Webhook node: Receive POST request
+2. MongoDB node: Find One
+   - Collection: users
+   - Filter: { "email": "{{$json.email}}", "password": "{{$json.password}}" }
+3. Response node: Return user object
+   - Response: { "user": {{$json}} }
+   - Note: Remove password field from response for security
+
+Expected Response:
+{
+  "user": {
+    "_id": { "$oid": "..." },
+    "email": "user@example.com",
+    "role": "client",
+    "clientId": "6728ba02768b0b66c95ccadbc8",
+    "created_at": { "$date": { "$numberLong": "..." } }
+  }
+}
+
+2. GET DOMAINS
+--------------
+Webhook URL: https://n8n.digitribe.se/webhook/get-domains
+Method: POST
+Purpose: Fetch all domains for a specific client
+
+Input Payload:
+{
+  "clientId": "6728ba02768b0b66c95ccadbc8"
+}
+
+Workflow Steps:
+1. Webhook node: Receive POST request
+2. MongoDB node: Find
+   - Collection: domains
+   - Filter: { "clientId": "{{$json.clientId}}" }
+3. Response node: Return domains array
+   - Response: { "domains": {{$json}} }
+
+Expected Response:
+{
+  "domains": [
+    { "id": "domain1", "name": "Domain 1", "clientId": "..." },
+    { "id": "domain2", "name": "Domain 2", "clientId": "..." }
+  ]
+}
+
+3. GET CONTENT BRIEFS
+---------------------
+Webhook URL: https://n8n.digitribe.se/webhook/get-content-briefs
+Method: POST
+Purpose: Fetch content briefs filtered by clientId and optionally domainId
+
+Input Payload:
+{
+  "clientId": "6728ba02768b0b66c95ccadbc8",
+  "domainId": "domain1"  // Optional
+}
+
+Workflow Steps:
+1. Webhook node: Receive POST request
+2. Function node: Build filter
+   - If domainId exists: { "clientId": "...", "domainId": "..." }
+   - If no domainId: { "clientId": "..." }
+3. MongoDB node: Find
+   - Collection: content_briefs
+   - Filter: Use output from Function node
+4. Response node: Return briefs array
+   - Response: { "briefs": {{$json}} }
+
+Expected Response:
+{
+  "briefs": [
+    {
+      "id": "brief-1",
+      "clientId": "...",
+      "domainId": "domain1",
+      "title": "Article Title",
+      "brief": "Brief description",
+      "content": "Full content",
+      "status": "Draft",
+      "contentType": "Blog",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+
+4. GET BRAND GUIDES
+-------------------
+Webhook URL: https://n8n.digitribe.se/webhook/get-brand-guides
+Method: POST
+Purpose: Fetch brand guides filtered by clientId and optionally domainId
+
+Input Payload:
+{
+  "clientId": "6728ba02768b0b66c95ccadbc8",
+  "domainId": "domain1"  // Optional
+}
+
+Workflow Steps:
+1. Webhook node: Receive POST request
+2. Function node: Build filter
+   - If domainId exists: { "clientId": "...", "domainId": "..." }
+   - If no domainId: { "clientId": "..." }
+3. MongoDB node: Find or Find One (depending on whether domainId is provided)
+   - Collection: brand_guides
+   - Filter: Use output from Function node
+4. Response node: Return brand guide(s)
+   - With domainId: { "brandGuide": {{$json}} }
+   - Without domainId: { "brandGuides": {{$json}} }
+
+Expected Response (single):
+{
+  "brandGuide": {
+    "domainId": "domain1",
+    "clientId": "...",
+    "stylePrompt": "Professional, modern...",
+    "toneOfVoice": "Authoritative, clear...",
+    "styleImageUrl": "https://..."
+  }
+}
+
+5. UPDATE BRAND GUIDE
+---------------------
+Webhook URL: https://n8n.digitribe.se/webhook/update-brand-guide
+Method: POST
+Purpose: Update brand guide for a specific client and domain
+
+Input Payload:
+{
+  "clientId": "6728ba02768b0b66c95ccadbc8",
+  "domainId": "domain1",
+  "updates": {
+    "stylePrompt": "New style prompt",
+    "toneOfVoice": "New tone of voice"
+  }
+}
+
+Workflow Steps:
+1. Webhook node: Receive POST request
+2. MongoDB node: Update One
+   - Collection: brand_guides
+   - Filter: { "clientId": "{{$json.clientId}}", "domainId": "{{$json.domainId}}" }
+   - Update: { "$set": {{$json.updates}} }
+3. Response node: Return success
+   - Response: { "success": true }
+
+6. NEW BRIEF (Already exists - UPDATE IT)
+------------------------------------------
+Webhook URL: https://n8n.digitribe.se/webhook/b28
+Method: POST
+Purpose: Create new content brief
+
+IMPORTANT: Update this existing webhook to include clientId!
+
+Input Payload (UPDATED):
+{
+  "title": "Article Title",
+  "brief": "Brief description",
+  "domainId": "domain1",
+  "clientId": "6728ba02768b0b66c95ccadbc8"  // ADD THIS
+}
+
+Workflow Steps (UPDATE):
+1. Webhook node: Receive POST request
+2. (Optional) Gemini node: Generate initial content
+3. MongoDB node: Insert One
+   - Collection: content_briefs
+   - Document: {
+       "id": "brief-{{$now}}",
+       "clientId": "{{$json.clientId}}",  // ADD THIS
+       "domainId": "{{$json.domainId}}",
+       "title": "{{$json.title}}",
+       "brief": "{{$json.brief}}",
+       "content": "{{$json.generatedContent}}",
+       "status": "Draft",
+       "contentType": "Blog",
+       "createdAt": "{{$now}}"
+     }
+4. Response node: Return created brief
+
+7. PUBLISH (Already exists - UPDATE IT)
+----------------------------------------
+Webhook URL: https://n8n.digitribe.se/webhook/b2c60e8
+Method: POST
+Purpose: Publish content
+
+IMPORTANT: Update this existing webhook to verify clientId!
+
+Input Payload (UPDATED):
+{
+  "id": "brief-1",
+  "title": "Article Title",
+  "content": "Full content",
+  "heroImageUrl": "https://...",
+  "domainId": "domain1",
+  "contentType": "Blog",
+  "clientId": "6728ba02768b0b66c95ccadbc8"  // ADD THIS
+}
+
+Workflow Steps (UPDATE):
+1. Webhook node: Receive POST request
+2. MongoDB node: Update One
+   - Collection: content_briefs
+   - Filter: { "id": "{{$json.id}}", "clientId": "{{$json.clientId}}" }  // ADD clientId check
+   - Update: { "$set": { "status": "Published" } }
+3. WordPress/CMS node: Publish content
+4. Response node: Return success
+
+8. SCHEDULE (Already exists - UPDATE IT)
+-----------------------------------------
+Webhook URL: https://n8n.digitribe.se/webhook/b28f028d-3429-4280-a0f0-8afa263c60e8
+Method: POST
+Purpose: Schedule content for future publication
+
+IMPORTANT: Update this existing webhook to verify clientId!
+
+Input Payload (UPDATED):
+{
+  "id": "brief-1",
+  "title": "Article Title",
+  "content": "Full content",
+  "heroImageUrl": "https://...",
+  "domainId": "domain1",
+  "contentType": "Blog",
+  "scheduledAt": "2024-12-31T23:59:59.000Z",
+  "clientId": "6728ba02768b0b66c95ccadbc8"  // ADD THIS
+}
+
+Workflow Steps (UPDATE):
+1. Webhook node: Receive POST request
+2. MongoDB node: Update One
+   - Collection: content_briefs
+   - Filter: { "id": "{{$json.id}}", "clientId": "{{$json.clientId}}" }  // ADD clientId check
+   - Update: { "$set": { "status": "Scheduled", "scheduledAt": "{{$json.scheduledAt}}" } }
+3. Response node: Return success
+
+MongoDB Collections Schema:
+===========================
+
+1. users (existing)
+-------------------
+{
+  "_id": ObjectId,
+  "email": String,
+  "password": String,
+  "role": String,
+  "clientId": String,
+  "created_at": ISODate
+}
+
+2. domains (NEW - needs to be created)
+---------------------------------------
+{
+  "_id": ObjectId,
+  "id": String,           // Unique domain identifier
+  "name": String,         // Display name
+  "clientId": String      // Client this domain belongs to
+}
+
+3. content_briefs (UPDATE - add clientId field)
+------------------------------------------------
+{
+  "_id": ObjectId,
+  "id": String,
+  "clientId": String,     // ADD THIS FIELD
+  "domainId": String,
+  "title": String,
+  "brief": String,
+  "content": String,
+  "status": String,
+  "contentType": String,
+  "heroImageUrl": String,
+  "createdAt": ISODate,
+  "scheduledAt": ISODate
+}
+
+4. brand_guides (UPDATE - add clientId field)
+----------------------------------------------
+{
+  "_id": ObjectId,
+  "clientId": String,     // ADD THIS FIELD
+  "domainId": String,
+  "stylePrompt": String,
+  "toneOfVoice": String,
+  "styleImageUrl": String
+}
+
+Next Steps:
+===========
+1. Create the new webhooks in N8N (find-user, get-domains, get-content-briefs, get-brand-guides, update-brand-guide)
+2. Update existing webhooks (b28, b2c60e8, b28f028d-3429-4280-a0f0-8afa263c60e8) to include clientId
+3. Create the "domains" collection in MongoDB
+4. Add clientId field to existing content_briefs documents
+5. Add clientId field to existing brand_guides documents
+6. Test the login flow
+7. Test data loading filtered by clientId

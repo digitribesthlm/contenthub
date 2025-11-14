@@ -1,25 +1,67 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { ContentBrief, Domain, BrandGuide, Status } from '../types';
-import { MOCK_DOMAINS, MOCK_BRAND_GUIDES, MOCK_CONTENT_BRIEFS } from '../constants';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { ContentBrief, Domain, BrandGuide, Status, User } from '../types';
 import ContentList from './ContentList';
 import ContentDetail from './ContentDetail';
 import ContentForm from './ContentForm';
 import BrandGuideEditor from './BrandGuideEditor';
 import { submitBrief as n8nSubmitBrief } from '../services/n8nService';
+import { 
+  getDomainsByClientId, 
+  getAllContentBriefsByClient, 
+  getAllBrandGuidesByClient 
+} from '../services/mongoService';
 import { LogoutIcon, DocumentTextIcon, PaintBrushIcon } from './Icons';
 
 interface DashboardProps {
+  user: User;
   onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const [briefs, setBriefs] = useState<ContentBrief[]>(MOCK_CONTENT_BRIEFS);
-  const [brandGuides, setBrandGuides] = useState<BrandGuide[]>(MOCK_BRAND_GUIDES);
-  const [selectedDomainId, setSelectedDomainId] = useState<string>(MOCK_DOMAINS[0].id);
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+  const [briefs, setBriefs] = useState<ContentBrief[]>([]);
+  const [brandGuides, setBrandGuides] = useState<BrandGuide[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('');
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load data from MongoDB on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Load domains for this client
+        const clientDomains = await getDomainsByClientId(user.clientId);
+        setDomains(clientDomains);
+        
+        if (clientDomains.length > 0) {
+          setSelectedDomainId(clientDomains[0].id);
+        }
+
+        // Load all content briefs for this client
+        const clientBriefs = await getAllContentBriefsByClient(user.clientId);
+        setBriefs(clientBriefs);
+
+        // Load all brand guides for this client
+        const clientBrandGuides = await getAllBrandGuidesByClient(user.clientId);
+        setBrandGuides(clientBrandGuides);
+
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setError('Failed to load data. Please refresh the page.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user.clientId]);
 
   const filteredBriefs = useMemo(() => {
     return briefs
@@ -32,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   }, [briefs, selectedBriefId]);
 
   const brandGuide = useMemo(() => {
-    return brandGuides.find(bg => bg.domainId === selectedDomainId)!;
+    return brandGuides.find(bg => bg.domainId === selectedDomainId);
   }, [brandGuides, selectedDomainId]);
   
   const handleSelectBrief = useCallback((id: string) => {
@@ -65,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   }, [selectedBriefId]);
 
   const handleNewBrief = async (briefText: string, title: string) => {
-    const newBrief = await n8nSubmitBrief(briefText, title, selectedDomainId);
+    const newBrief = await n8nSubmitBrief(briefText, title, selectedDomainId, user.clientId);
     setBriefs(prevBriefs => [newBrief, ...prevBriefs]);
     setSelectedBriefId(newBrief.id);
     setIsCreating(false);
@@ -79,11 +121,57 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     );
   }, [selectedDomainId]);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your content...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (domains.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">No domains found for your account.</p>
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <aside className="w-1/4 max-w-sm bg-gray-800 p-4 flex flex-col border-r border-gray-700">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold text-white">Content Hub</h1>
+          <div>
+            <h1 className="text-xl font-bold text-white">Content Hub</h1>
+            <p className="text-xs text-gray-400">{user.email}</p>
+          </div>
           <button onClick={onLogout} className="p-2 rounded-md hover:bg-gray-700 transition-colors" title="Logout">
               <LogoutIcon className="w-5 h-5 text-gray-400" />
           </button>
@@ -100,7 +188,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               setIsCreating(false);
             }}
           >
-            {MOCK_DOMAINS.map(domain => (
+            {domains.map(domain => (
               <option key={domain.id} value={domain.id}>{domain.name}</option>
             ))}
           </select>
@@ -145,6 +233,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 key={selectedBrief.id}
                 brief={selectedBrief}
                 brandGuide={brandGuide}
+                clientId={user.clientId}
                 onUpdate={handleUpdateBrief}
                 onPublish={handlePublishBrief}
                 onSchedule={handleScheduleBrief}
@@ -156,10 +245,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             )}
           </>
         ) : (
-          <BrandGuideEditor 
-            brandGuide={brandGuide}
-            onSave={handleSaveBrandGuide}
-          />
+          brandGuide ? (
+            <BrandGuideEditor 
+              brandGuide={brandGuide}
+              onSave={handleSaveBrandGuide}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <p>No brand guide found for this domain.</p>
+            </div>
+          )
         )}
       </main>
     </div>

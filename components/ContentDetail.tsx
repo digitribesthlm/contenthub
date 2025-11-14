@@ -6,13 +6,14 @@ import { SparklesIcon, UploadCloudIcon, PencilIcon, ClockIcon } from './Icons';
 
 interface ContentDetailProps {
   brief: ContentBrief;
-  brandGuide: BrandGuide;
+  brandGuide: BrandGuide | undefined;
+  clientId: string;
   onUpdate: (updatedBrief: Partial<ContentBrief>) => void;
   onPublish: () => void;
   onSchedule: (scheduledAt: string) => void;
 }
 
-const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpdate, onPublish, onSchedule }) => {
+const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, clientId, onUpdate, onPublish, onSchedule }) => {
   const [editedContent, setEditedContent] = useState(brief.content);
   const [contentType, setContentType] = useState(brief.contentType);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -43,7 +44,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setError(null);
     try {
       const prompt = `Based on the following content, create a hero image. Content: "${brief.content}"`;
-      const imageUrl = await generateHeroImage(prompt, brandGuide.stylePrompt, brandGuide.styleImageUrl);
+      const imageUrl = await generateHeroImage(prompt, brandGuide?.stylePrompt || '', brandGuide?.styleImageUrl);
       setHeroImage(imageUrl);
       onUpdate({ heroImageUrl: imageUrl });
     } catch (err) {
@@ -59,7 +60,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setIsGeneratingImage(true);
     setError(null);
     try {
-      const imageUrl = await editHeroImage(heroImage, editPrompt, brandGuide.stylePrompt);
+      const imageUrl = await editHeroImage(heroImage, editPrompt, brandGuide?.stylePrompt || '');
       setHeroImage(imageUrl);
       onUpdate({ heroImageUrl: imageUrl });
       setEditPrompt('');
@@ -75,7 +76,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setIsPublishing(true);
     setError(null);
     try {
-      await n8nPublishContent(brief);
+      await n8nPublishContent(brief, clientId);
       onPublish();
     } catch (err) {
       console.error("Publishing failed:", err);
@@ -91,7 +92,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setError(null);
     try {
       const scheduledAt = new Date(scheduleDate).toISOString();
-      await n8nScheduleContent(brief, scheduledAt);
+      await n8nScheduleContent(brief, scheduledAt, clientId);
       onSchedule(scheduledAt);
       setShowScheduler(false);
     } catch(err) {

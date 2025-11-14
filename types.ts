@@ -13,10 +13,12 @@ export enum ContentType {
 export interface Domain {
   id: string;
   name: string;
+  clientId: string;
 }
 
 export interface BrandGuide {
   domainId: string;
+  clientId: string;
   stylePrompt: string;
   toneOfVoice: string;
   styleImageUrl?: string;
@@ -25,6 +27,7 @@ export interface BrandGuide {
 export interface ContentBrief {
   id: string;
   domainId: string;
+  clientId: string;
   title: string;
   brief: string;
   content: string;
