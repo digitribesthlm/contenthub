@@ -25,6 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
+  const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -32,23 +33,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         setIsLoading(true);
         setError(null);
         
-        console.log('\n' + '='.repeat(60));
-        console.log('🎬 === DASHBOARD LOADING DATA ===');
-        console.log('='.repeat(60));
-        console.log('User ClientId:', user.clientId);
-        
-        // Fetch all data in parallel
         const [fetchedDomains, fetchedBrandGuides, fetchedBriefs] = await Promise.all([
           fetchDomains(user.clientId),
           fetchBrandGuides(user.clientId),
           fetchContentBriefs(user.clientId)
         ]);
-        
-        console.log('\n📦 Data loaded into Dashboard state:');
-        console.log('   Domains:', fetchedDomains.length);
-        console.log('   Brand Guides:', fetchedBrandGuides.length);
-        console.log('   Briefs:', fetchedBriefs.length);
-        console.log('='.repeat(60) + '\n');
         
         setDomains(fetchedDomains);
         setBrandGuides(fetchedBrandGuides);
@@ -86,6 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const handleSelectBrief = useCallback((id: string) => {
     setSelectedBriefId(id);
     setIsCreating(false);
+    setShowSidebar(false); // Close sidebar on mobile after selection
   }, []);
 
   const handleUpdateBrief = useCallback((updatedBrief: Partial<ContentBrief>) => {
@@ -118,6 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     setBriefs(prevBriefs => [newBrief, ...prevBriefs]);
     setSelectedBriefId(newBrief.id);
     setIsCreating(false);
+    setShowSidebar(false); // Close sidebar on mobile
   };
   
   const handleSaveBrandGuide = useCallback((updatedGuide: Partial<BrandGuide>) => {
@@ -126,7 +117,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         g.domainId === selectedDomainId ? { ...g, ...updatedGuide } : g
       )
     );
-    // In a real app, you'd also make an API call here to save to the backend
   }, [selectedDomainId]);
 
   if (isLoading) {
@@ -137,11 +127,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
      return <div className="flex h-screen items-center justify-center text-red-400">{error}</div>;
   }
 
-  // Dashboard shows even with no data - just empty states
-
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
-      <aside className="w-1/4 max-w-sm bg-gray-800 p-4 flex flex-col border-r border-gray-700">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setShowSidebar(!showSidebar)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-md shadow-lg"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {showSidebar ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-full sm:w-80 lg:w-1/4 lg:max-w-sm
+        bg-gray-800 p-4 flex flex-col border-r border-gray-700
+        transform transition-transform duration-300 ease-in-out
+        ${showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold text-white">Content Hub</h1>
           <button onClick={onLogout} className="p-2 rounded-md hover:bg-gray-700 transition-colors" title="Logout">
@@ -152,7 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <label htmlFor="domain-select" className="block text-sm font-medium text-gray-400 mb-1">Domain</label>
           <select
             id="domain-select"
-            className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
             value={selectedDomainId}
             onChange={e => {
               setSelectedDomainId(e.target.value);
@@ -190,12 +199,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     onNewBriefClick={() => {
                         setIsCreating(true);
                         setSelectedBriefId(null);
+                        setShowSidebar(false);
                     }}
                 />
             </div>
         )}
       </aside>
-      <main className="flex-1 p-6 overflow-y-auto">
+
+      {/* Overlay for mobile */}
+      {showSidebar && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 p-4 sm:p-6 overflow-y-auto pt-16 lg:pt-6">
         {activeView === 'content' ? (
           <>
             {isCreating ? (
@@ -211,7 +231,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
-                <p>Select a brief from the list or create a new one.</p>
+                <p className="text-center px-4">Select a brief from the list or create a new one.</p>
               </div>
             )}
           </>
