@@ -1,3 +1,25 @@
+# IMPORTANT: Running in Development Mode
+
+This application is currently configured to run in a **development mode** using a **mock API layer**. This means:
+
+1.  **You can log in and test the entire UI.**
+2.  **The application is populated with sample data.**
+
+This setup allows you to develop and test the frontend application without needing a live, running backend.
+
+## Development Login Credentials
+
+-   **Email:** `test@example.com`
+-   **Password:** `password`
+
+---
+
+## Switching to Production
+
+Before deploying your application, you **must** connect it to your live backend. To do this, go into the files in the `/services` directory (`authService.ts`, `apiService.ts`, `n8nService.ts`) and replace the mock, development-only functions with real `fetch` calls to your API endpoints.
+
+---
+
 # Content Publishing Hub
 
 This is a web application designed to streamline the content creation and publishing workflow. It allows users to manage content briefs across different domains, generate AI-powered hero images tailored to specific brand guides, and push content to a publishing endpoint via a webhook.
@@ -67,7 +89,7 @@ MONGODB_COLLECTION_BRAND_GUIDES="brand_guides"
 
 ## Connecting to a Live Backend
 
-This frontend application is now a "shell" that expects to communicate with a live backend API. All mock data has been removed. You must implement the following API endpoints in your backend.
+This frontend application is a "shell" that expects to communicate with a live backend API. You must implement the following API endpoints in your backend.
 
 **IMPORTANT:** Every endpoint must be authenticated and should use the `clientId` from the authenticated user's token/session to scope all database queries.
 
@@ -76,14 +98,14 @@ This frontend application is now a "shell" that expects to communicate with a li
     -   **Success Response (200 OK):** The full `User` object (without the password).
     -   **Failure Response (401 Unauthorized):** An error message.
 
--   `GET /api/domains?clientId={clientId}`
-    -   **Success Response (200 OK):** An array of `Domain` objects.
+-   `GET /api/domains`
+    -   **Success Response (200 OK):** An array of `Domain` objects for the authenticated user's clientId.
 
--   `GET /api/brand-guides?clientId={clientId}`
-    -   **Success Response (200 OK):** An array of `BrandGuide` objects.
+-   `GET /api/brand-guides`
+    -   **Success Response (200 OK):** An array of `BrandGuide` objects for the authenticated user's clientId.
 
--   `GET /api/content-briefs?clientId={clientId}`
-    -   **Success Response (200 OK):** An array of `ContentBrief` objects.
+-   `GET /api/content-briefs`
+    -   **Success Response (200 OK):** An array of `ContentBrief` objects for the authenticated user's clientId.
 
 ---
 
