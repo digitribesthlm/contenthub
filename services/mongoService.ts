@@ -2,58 +2,33 @@ import { User, ContentBrief, BrandGuide, Domain } from '../types';
 
 /**
  * MongoDB service that uses N8N webhooks to interact with MongoDB
- * This approach allows the frontend to query MongoDB through N8N workflows
- * which handle the database connection and queries securely on the backend
  */
 
-// N8N Webhook endpoints for MongoDB operations
 const N8N_BASE_URL = 'https://n8n.digitribe.se/webhook';
-
-// Create webhook endpoints for MongoDB queries
-const WEBHOOKS = {
-  FIND_USER: `${N8N_BASE_URL}/find-user`,
-  GET_DOMAINS: `${N8N_BASE_URL}/get-domains`,
-  GET_CONTENT_BRIEFS: `${N8N_BASE_URL}/get-content-briefs`,
-  GET_BRAND_GUIDES: `${N8N_BASE_URL}/get-brand-guides`,
-  UPDATE_BRAND_GUIDE: `${N8N_BASE_URL}/update-brand-guide`,
-};
-
-/**
- * Generic function to call N8N webhooks
- */
-async function callN8NWebhook(url: string, payload: any): Promise<any> {
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`N8N webhook error: ${response.statusText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error calling N8N webhook:', error);
-    throw error;
-  }
-}
 
 /**
  * Find a user by email and password
- * The N8N workflow should query the users collection with these credentials
  */
 export async function findUserByCredentials(email: string, password: string): Promise<User | null> {
   try {
-    const result = await callN8NWebhook(WEBHOOKS.FIND_USER, {
-      email: email.toLowerCase(),
-      password: password,
+    const response = await fetch(`${N8N_BASE_URL}/find-user`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        password: password,
+      }),
     });
 
-    return result.user || null;
+    if (!response.ok) {
+      throw new Error(`Authentication failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.user || data || null;
   } catch (error) {
     console.error('Error finding user:', error);
     throw error;
@@ -62,15 +37,24 @@ export async function findUserByCredentials(email: string, password: string): Pr
 
 /**
  * Get all domains for a specific client
- * The N8N workflow should query the domains collection filtered by clientId
  */
 export async function getDomainsByClientId(clientId: string): Promise<Domain[]> {
   try {
-    const result = await callN8NWebhook(WEBHOOKS.GET_DOMAINS, {
-      clientId,
+    const response = await fetch(`${N8N_BASE_URL}/get-domains`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
     });
 
-    return result.domains || [];
+    if (!response.ok) {
+      throw new Error(`Failed to fetch domains: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.domains || data || [];
   } catch (error) {
     console.error('Error fetching domains:', error);
     throw error;
@@ -78,20 +62,25 @@ export async function getDomainsByClientId(clientId: string): Promise<Domain[]> 
 }
 
 /**
- * Get all content briefs for a specific client and domain
- * The N8N workflow should query content_briefs collection filtered by clientId and domainId
+ * Get all content briefs for a specific client
  */
-export async function getContentBriefsByClientAndDomain(
-  clientId: string,
-  domainId: string
-): Promise<ContentBrief[]> {
+export async function getAllContentBriefsByClient(clientId: string): Promise<ContentBrief[]> {
   try {
-    const result = await callN8NWebhook(WEBHOOKS.GET_CONTENT_BRIEFS, {
-      clientId,
-      domainId,
+    const response = await fetch(`${N8N_BASE_URL}/get-content-briefs`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
     });
 
-    return result.briefs || [];
+    if (!response.ok) {
+      throw new Error(`Failed to fetch briefs: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.briefs || data || [];
   } catch (error) {
     console.error('Error fetching content briefs:', error);
     throw error;
@@ -99,54 +88,25 @@ export async function getContentBriefsByClientAndDomain(
 }
 
 /**
- * Get all content briefs for a specific client (all domains)
- * The N8N workflow should query content_briefs collection filtered by clientId only
- */
-export async function getAllContentBriefsByClient(clientId: string): Promise<ContentBrief[]> {
-  try {
-    const result = await callN8NWebhook(WEBHOOKS.GET_CONTENT_BRIEFS, {
-      clientId,
-    });
-
-    return result.briefs || [];
-  } catch (error) {
-    console.error('Error fetching all content briefs:', error);
-    throw error;
-  }
-}
-
-/**
- * Get brand guide for a specific client and domain
- * The N8N workflow should query brand_guides collection filtered by clientId and domainId
- */
-export async function getBrandGuideByClientAndDomain(
-  clientId: string,
-  domainId: string
-): Promise<BrandGuide | null> {
-  try {
-    const result = await callN8NWebhook(WEBHOOKS.GET_BRAND_GUIDES, {
-      clientId,
-      domainId,
-    });
-
-    return result.brandGuide || null;
-  } catch (error) {
-    console.error('Error fetching brand guide:', error);
-    throw error;
-  }
-}
-
-/**
  * Get all brand guides for a specific client
- * The N8N workflow should query brand_guides collection filtered by clientId
  */
 export async function getAllBrandGuidesByClient(clientId: string): Promise<BrandGuide[]> {
   try {
-    const result = await callN8NWebhook(WEBHOOKS.GET_BRAND_GUIDES, {
-      clientId,
+    const response = await fetch(`${N8N_BASE_URL}/get-brand-guides`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
     });
 
-    return result.brandGuides || [];
+    if (!response.ok) {
+      throw new Error(`Failed to fetch brand guides: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.brandGuides || data || [];
   } catch (error) {
     console.error('Error fetching brand guides:', error);
     throw error;
@@ -155,7 +115,6 @@ export async function getAllBrandGuidesByClient(clientId: string): Promise<Brand
 
 /**
  * Update a brand guide
- * The N8N workflow should update the brand_guides collection
  */
 export async function updateBrandGuide(
   clientId: string,
@@ -163,11 +122,22 @@ export async function updateBrandGuide(
   updates: Partial<BrandGuide>
 ): Promise<void> {
   try {
-    await callN8NWebhook(WEBHOOKS.UPDATE_BRAND_GUIDE, {
-      clientId,
-      domainId,
-      updates,
+    const response = await fetch(`${N8N_BASE_URL}/update-brand-guide`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        clientId,
+        domainId,
+        updates,
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update brand guide: ${response.statusText}`);
+    }
   } catch (error) {
     console.error('Error updating brand guide:', error);
     throw error;
