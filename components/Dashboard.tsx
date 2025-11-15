@@ -92,6 +92,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       )
     );
   }, [selectedBriefId]);
+
+  const handleDeleteBrief = useCallback(() => {
+    setBriefs(prevBriefs => prevBriefs.filter(b => b.id !== selectedBriefId));
+    setSelectedBriefId(null);
+  }, [selectedBriefId]);
   
   const handlePublishBrief = useCallback(() => {
     setBriefs(prevBriefs =>
@@ -241,6 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 onUpdate={handleUpdateBrief}
                 onPublish={handlePublishBrief}
                 onSchedule={handleScheduleBrief}
+                onDelete={handleDeleteBrief}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">

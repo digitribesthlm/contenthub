@@ -225,6 +225,34 @@ app.post('/api/brand-guide/:brandGuideId/image', async (req, res) => {
   }
 });
 
+// Delete brief
+app.delete('/api/brief/:briefId', async (req, res) => {
+  try {
+    await connectDB();
+    const { briefId } = req.params;
+
+    if (!ObjectId.isValid(briefId)) {
+      return res.status(400).json({ error: 'Invalid briefId' });
+    }
+
+    const objectId = new ObjectId(briefId);
+
+    const result = await db.collection(MONGODB_COLLECTION_CONTENT_BRIEFS).deleteOne(
+      { _id: objectId }
+    );
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Brief not found' });
+    }
+
+    console.log('✅ Brief deleted:', briefId);
+    res.json({ success: true, message: 'Brief deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting brief:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

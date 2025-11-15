@@ -64,6 +64,25 @@ export const fetchContentBriefs = async (clientId: string): Promise<ContentBrief
     }
 };
 
+export const deleteBrief = async (briefId: string): Promise<void> => {
+    const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000');
+    
+    try {
+        const response = await fetch(`${apiUrl}/api/brief/${briefId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to delete brief: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error deleting brief:', error);
+        throw error;
+    }
+};
+
 export const saveBrandGuideImage = async (brandGuideId: string, imageData: string, mimeType: string = 'image/jpeg'): Promise<void> => {
     const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000');
     
