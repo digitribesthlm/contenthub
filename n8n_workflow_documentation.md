@@ -39,7 +39,7 @@ This workflow is triggered when a user creates a new content brief in the app.
 }
 ```
 
-**Important:** The `BriefID` field should be stored in MongoDB as a separate field from the MongoDB `_id`. This allows you to have a custom identifier that is independent of MongoDB's internal ID system.
+**Important:** The `BriefID` field should be stored in MongoDB as a separate field from the MongoDB `_id`. This allows you to have a custom identifier that is independent of MongoDB’s internal ID system.
 
 **Workflow Steps:**
 
@@ -66,7 +66,8 @@ This workflow is triggered when a user clicks "Publish Now" on a content brief.
   "domainId": "string",
   "heroImageUrl": "string",
   "heroImageData": "string | null", // Base64 encoded image if generated
-  "createdAt": "string"
+  "createdAt": "string",
+  "wordpressPageId": "string | null" // WordPress page/post ID (will be set by n8n after publishing)
 }
 ```
 
@@ -76,7 +77,7 @@ This workflow is triggered when a user clicks "Publish Now" on a content brief.
 2.  **AI Content Enhancement (Optional):** You can add a step here to use an AI model (like Gemini) to refine or expand the content before publishing.
 3.  **Generate Hero Image (if needed):** If `heroImageData` is null, use the Gemini API to generate a hero image based on the content.
 4.  **Publish to WordPress:** The content, title, and hero image are published to the corresponding WordPress site.
-5.  **Update MongoDB:** The status of the content brief is updated to `Published` in the `content_briefs` collection.
+5.  **Update MongoDB:** The status of the content brief is updated to `Published` in the `content_briefs` collection, and the `wordpressPageId` is set to the ID returned from WordPress.
 
 ### 3.3. Schedule Content Workflow
 
@@ -98,7 +99,8 @@ This workflow is triggered when a user schedules a content brief for future publ
   "heroImageUrl": "string",
   "heroImageData": "string | null",
   "scheduledAt": "string", // ISO 8601 date string
-  "createdAt": "string"
+  "createdAt": "string",
+  "wordpressPageId": "string | null"
 }
 ```
 
@@ -107,9 +109,31 @@ This workflow is triggered when a user schedules a content brief for future publ
 1.  **Receive Webhook:** The workflow starts with the content brief and schedule date.
 2.  **Schedule Execution:** The workflow is scheduled to run at the specified `scheduledAt` time.
 3.  **Publish to WordPress:** At the scheduled time, the content is published to WordPress.
-4.  **Update MongoDB:** The status of the content brief is updated to `Published`.
+4.  **Update MongoDB:** The status of the content brief is updated to `Published`, and the `wordpressPageId` is set.
 
-## 4. AI Integration (Gemini)
+## 4. Field Naming and Data Consistency
+
+**Guiding Principle:** The Content Hub application is the single source of truth for all data schema and field names. The n8n workflows should **never** invent or rename fields. They should only receive, store, and update data using the exact field names provided by the app.
+
+### WordPress Page ID (`wordpressPageId`)
+
+- **Purpose:** To store the ID of the page or post created in WordPress after publishing.
+- **Type:** `string` (or `null` if not yet published)
+- **Workflow:**
+  1. The app sends `wordpressPageId: null` in the payload to the "Publish" webhook.
+  2. The n8n workflow publishes the content to WordPress.
+  3. WordPress returns a `page_id` or `post_id`.
+  4. The n8n workflow updates the corresponding brief in MongoDB, setting the `wordpressPageId` field to the value received from WordPress.
+
+### Field Name Consistency
+
+- **`scheduledAt` vs `scheduledDate`**: The app uses `scheduledAt`. n8n should use `scheduledAt`.
+- **`createdAt` vs `creationDate`**: The app uses `createdAt`. n8n should use `createdAt`.
+- **`BriefID` vs `id`**: The app sends both. `BriefID` is the custom identifier. `id` is also the same value. Use `BriefID` for consistency.
+
+By adhering to this principle, you ensure that the data remains consistent between the app and n8n, preventing mapping issues and ensuring that new fields added to the app are automatically available in n8n.
+
+## 5. AI Integration (Gemini)
 
 The application uses the Gemini API for two main purposes:
 
@@ -118,10 +142,10 @@ The application uses the Gemini API for two main purposes:
 
 This is handled in the `geminiService.ts` file and can be integrated into your n8n workflows as needed.
 
-## 5. MongoDB Integration
+## 6. MongoDB Integration
 
 All content briefs, domains, and brand guides are stored in MongoDB. The n8n workflows are responsible for creating and updating these records.
 
-## 6. WordPress Integration
+## 7. WordPress Integration
 
 The final step in the publishing and scheduling workflows is to publish the content to WordPress. This requires a WordPress integration in your n8n workflow that can create new posts with a title, content, and featured image.

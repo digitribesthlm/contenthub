@@ -42,6 +42,7 @@ export interface ContentBrief {
   heroImageData?: string; // Base64 encoded image data (if generated)
   createdAt: string;
   BriefID?: string; // Custom brief identifier from MongoDB
+  wordpressPageId?: string; // WordPress page/post ID after publishing
 }
 
 export interface User {

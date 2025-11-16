@@ -101,6 +101,7 @@ export const publishContent = async (brief: ContentBrief): Promise<{ success: bo
     
     // Metadata
     createdAt: brief.createdAt,
+    wordpressPageId: brief.wordpressPageId || null, // WordPress page/post ID (will be set by n8n after publishing)
   };
 
   console.log('\n' + '='.repeat(60));
@@ -162,6 +163,7 @@ export const scheduleContent = async (brief: ContentBrief, scheduledAt: string):
     // Scheduling
     scheduledAt,
     createdAt: brief.createdAt,
+    wordpressPageId: brief.wordpressPageId || null, // WordPress page/post ID (will be set by n8n after publishing)
   };
 
   console.log('\n' + '='.repeat(60));
