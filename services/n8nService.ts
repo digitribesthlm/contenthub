@@ -17,6 +17,7 @@ export const submitBrief = async (brief: string, title: string, domainId: string
   
   const payload = { 
     id: contentBriefId,
+    BriefID: contentBriefId, // Custom brief identifier for MongoDB
     title, 
     brief, 
     domainId, 
