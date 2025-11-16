@@ -28,7 +28,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isLocked = brief.status === Status.Published || brief.status === Status.Scheduled;
+  const isLocked = brief.status === Status.Published; // Only lock published content, allow rescheduling
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -51,9 +51,17 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setHeroImage(brief.heroImageUrl);
     setEditPrompt('');
     setShowScheduler(false);
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    setScheduleDate(now.toISOString().slice(0,16));
+    
+    // If brief is scheduled, use the scheduled date; otherwise use current time
+    if (brief.scheduledAt) {
+      const scheduledDate = new Date(brief.scheduledAt);
+      scheduledDate.setMinutes(scheduledDate.getMinutes() - scheduledDate.getTimezoneOffset());
+      setScheduleDate(scheduledDate.toISOString().slice(0,16));
+    } else {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      setScheduleDate(now.toISOString().slice(0,16));
+    }
 
   }, [brief]);
 
@@ -336,7 +344,7 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
                 className="flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900"
               >
               <ClockIcon className="w-5 h-5" />
-              Schedule
+              {brief.status === Status.Scheduled ? 'Reschedule' : 'Schedule'}
             </button>
             <button
               onClick={handlePublish}
