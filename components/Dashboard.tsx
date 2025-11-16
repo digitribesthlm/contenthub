@@ -5,8 +5,9 @@ import ContentList from './ContentList';
 import ContentDetail from './ContentDetail';
 import ContentForm from './ContentForm';
 import BrandGuideEditor from './BrandGuideEditor';
+import { Calendar } from './Calendar';
 import { submitBrief as n8nSubmitBrief } from '../services/n8nService';
-import { LogoutIcon, DocumentTextIcon, PaintBrushIcon } from './Icons';
+import { LogoutIcon, DocumentTextIcon, PaintBrushIcon, CalendarIcon } from './Icons';
 
 interface DashboardProps {
   user: User;
@@ -24,7 +25,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [selectedDomainId, setSelectedDomainId] = useState<string | undefined>();
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [activeView, setActiveView] = useState<'content' | 'brand'>('content');
+  const [activeView, setActiveView] = useState<'content' | 'brand' | 'calendar'>('content');
   const [showSidebar, setShowSidebar] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -207,6 +208,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <PaintBrushIcon className="w-5 h-5 mr-2" />
                 Brand Guide
             </button>
+            <button 
+                className={`flex-1 flex items-center justify-center p-3 text-sm font-medium transition-colors ${activeView === 'calendar' ? 'text-white border-b-2 border-indigo-500' : 'text-gray-400 hover:text-white'}`}
+                onClick={() => {
+                  setActiveView('calendar');
+                  setShowSidebar(false);
+                }}
+            >
+                <CalendarIcon className="w-5 h-5 mr-2" />
+                Calendar
+            </button>
         </div>
         {activeView === 'content' && (
             <div className="flex-grow overflow-y-auto">
@@ -265,10 +276,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               </div>
             )}
           </>
-        ) : (
+        ) : activeView === 'brand' ? (
           <BrandGuideEditor 
             brandGuide={brandGuide}
             onSave={handleSaveBrandGuide}
+          />
+        ) : (
+          <Calendar
+            briefs={filteredBriefs}
+            onBriefClick={(brief) => {
+              setActiveView('content');
+              setSelectedBriefId(brief.id);
+              setIsCreating(false);
+            }}
+            onDateClick={(date) => {
+              // Future: Create new brief for selected date
+              console.log('Date clicked:', date);
+            }}
           />
         )}
       </main>
