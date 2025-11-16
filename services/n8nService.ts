@@ -85,6 +85,7 @@ export const publishContent = async (brief: ContentBrief): Promise<{ success: bo
   const payload = {
     // Core brief data
     id: brief.id,
+    BriefID: brief.BriefID || brief.id, // Custom brief identifier
     title: brief.title,
     brief: brief.brief,
     content: brief.content,
@@ -146,6 +147,7 @@ export const scheduleContent = async (brief: ContentBrief, scheduledAt: string):
   const payload = {
     // Core brief data
     id: brief.id,
+    BriefID: brief.BriefID || brief.id, // Custom brief identifier
     title: brief.title,
     brief: brief.brief,
     content: brief.content,

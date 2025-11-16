@@ -57,6 +57,7 @@ This workflow is triggered when a user clicks "Publish Now" on a content brief.
 ```json
 {
   "id": "string",
+  "BriefID": "string", // Custom brief identifier (same as id)
   "title": "string",
   "brief": "string",
   "content": "string",
@@ -89,6 +90,7 @@ This workflow is triggered when a user schedules a content brief for future publ
 ```json
 {
   "id": "string",
+  "BriefID": "string", // Custom brief identifier (same as id)
   "title": "string",
   "brief": "string",
   "content": "string",
