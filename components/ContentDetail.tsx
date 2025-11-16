@@ -211,8 +211,15 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
 
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">{brief.title}</h2>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">{brief.brief}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">{brief.title}</h2>
+            {brief.BriefID && (
+              <span className="text-sm text-gray-500 font-mono bg-gray-800 px-3 py-1 rounded">
+                #{brief.BriefID}
+              </span>
+            )}
+          </div>
+          <p className="text-gray-400 text-sm sm:text-base">{brief.brief}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
             <StatusPill status={brief.status} scheduledAt={brief.scheduledAt} />

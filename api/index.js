@@ -177,6 +177,7 @@ app.get('/api/client/:clientId', requireAuth, async (req, res) => {
           heroImageUrl: b.heroImageUrl,
           createdAt: b.createdAt,
           clientId: b.clientId,
+          BriefID: b.BriefID,
         })),
       },
     });

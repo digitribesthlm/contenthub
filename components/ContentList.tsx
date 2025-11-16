@@ -44,7 +44,14 @@ const ContentList: React.FC<ContentListProps> = ({ briefs, selectedBriefId, onSe
               }`}
               onClick={() => onSelectBrief(brief.id)}
             >
-              <h3 className="font-semibold text-gray-100 truncate">{brief.title}</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-gray-100 truncate flex-1">{brief.title}</h3>
+                {brief.BriefID && (
+                  <span className="text-xs text-gray-500 font-mono bg-gray-800 px-2 py-0.5 rounded">
+                    #{brief.BriefID}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-xs text-gray-400">
                   {new Date(brief.createdAt).toLocaleDateString()}

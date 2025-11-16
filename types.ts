@@ -41,6 +41,7 @@ export interface ContentBrief {
   heroImageUrl?: string;
   heroImageData?: string; // Base64 encoded image data (if generated)
   createdAt: string;
+  BriefID?: string; // Custom brief identifier from MongoDB
 }
 
 export interface User {
