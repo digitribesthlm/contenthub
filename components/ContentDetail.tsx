@@ -53,11 +53,25 @@ const ContentDetail: React.FC<ContentDetailProps> = ({ brief, brandGuide, onUpda
     setShowScheduler(false);
     
     // If brief is scheduled, use the scheduled date; otherwise use current time
-    if (brief.scheduledAt) {
-      const scheduledDate = new Date(brief.scheduledAt);
-      scheduledDate.setMinutes(scheduledDate.getMinutes() - scheduledDate.getTimezoneOffset());
-      setScheduleDate(scheduledDate.toISOString().slice(0,16));
-    } else {
+    try {
+      if (brief.scheduledAt) {
+        const scheduledDate = new Date(brief.scheduledAt);
+        if (!isNaN(scheduledDate.getTime())) {
+          scheduledDate.setMinutes(scheduledDate.getMinutes() - scheduledDate.getTimezoneOffset());
+          setScheduleDate(scheduledDate.toISOString().slice(0,16));
+        } else {
+          // Invalid date, use current time
+          const now = new Date();
+          now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+          setScheduleDate(now.toISOString().slice(0,16));
+        }
+      } else {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        setScheduleDate(now.toISOString().slice(0,16));
+      }
+    } catch (err) {
+      console.error('Error parsing scheduled date:', err);
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       setScheduleDate(now.toISOString().slice(0,16));

@@ -44,9 +44,12 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: 'Too many login attempts, please try again later',
+  message: { error: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({ error: 'Too many login attempts, please try again later' });
+  },
 });
 
 // Login endpoint
