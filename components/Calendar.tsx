@@ -13,7 +13,7 @@ export const Calendar: React.FC<CalendarProps> = ({ briefs, onBriefClick, onDate
 
   // Filter briefs with valid dates
   const validBriefs = briefs.filter(brief => {
-    const date = brief.scheduledDate || brief.publishedDate;
+    const date = brief.scheduledAt || brief.createdAt;
     return date && !isNaN(new Date(date).getTime());
   });
 
@@ -43,7 +43,7 @@ export const Calendar: React.FC<CalendarProps> = ({ briefs, onBriefClick, onDate
   const getBriefsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     return validBriefs.filter(brief => {
-      const briefDate = new Date(brief.scheduledDate || brief.publishedDate!);
+      const briefDate = new Date(brief.scheduledAt || brief.createdAt);
       const briefDateStr = briefDate.toISOString().split('T')[0];
       return briefDateStr === dateStr;
     });
